@@ -83,6 +83,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all students with basic stats for directory
+  app.get("/api/students/all", async (req, res) => {
+    try {
+      const adminData = await storage.getAdminDashboardData();
+      res.json(adminData.students);
+    } catch (error) {
+      console.error('Error fetching all students:', error);
+      res.status(500).json({ error: 'Failed to fetch students' });
+    }
+  });
+
   // Sync single student
   app.post("/api/sync/student/:id", async (req, res) => {
     try {

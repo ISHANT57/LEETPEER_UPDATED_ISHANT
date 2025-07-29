@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { useParams } from "wouter";
+import { Link } from "wouter";
+import { RefreshCw, ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -11,13 +13,12 @@ import DailyActivity from "@/components/dashboard/daily-activity";
 import type { StudentDashboardData } from "@shared/schema";
 
 export default function StudentDashboard() {
+  const { username } = useParams();
   const { toast } = useToast();
-  
-  // For demo purposes, using first student from JSON. In real app, this would come from auth
-  const username = "aadi2532";
 
   const { data, isLoading, error, refetch } = useQuery<StudentDashboardData>({
     queryKey: ['/api/dashboard/student', username],
+    enabled: !!username,
   });
 
   const handleSync = async () => {
@@ -38,6 +39,23 @@ export default function StudentDashboard() {
       });
     }
   };
+
+  if (!username) {
+    return (
+      <div className="flex-1 p-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <h3 className="text-lg font-medium text-yellow-800">No student selected</h3>
+          <p className="text-yellow-700">Please go back and select a student from the directory.</p>
+          <Link href="/">
+            <Button className="mt-3">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Student Directory
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -85,9 +103,31 @@ export default function StudentDashboard() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Student Dashboard</h2>
-            <p className="text-sm text-slate-500">Track your LeetCode progress and achievements</p>
+          <div className="flex items-center space-x-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                All Students
+              </Button>
+            </Link>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">
+                {data?.student?.name || username}
+              </h2>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-slate-500">@{username}</p>
+                {data?.student?.leetcodeProfileLink && (
+                  <a 
+                    href={data.student.leetcodeProfileLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </a>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-sm text-slate-500">

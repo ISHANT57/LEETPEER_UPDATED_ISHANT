@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   {
-    name: "Student Dashboard",
+    name: "All Students",
     href: "/",
-    icon: Code,
+    icon: Users,
   },
   {
     name: "Admin Dashboard",
     href: "/admin",
-    icon: Users,
+    icon: Code,
   },
   {
     name: "Leaderboard",
