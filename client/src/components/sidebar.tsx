@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Code, Users, Trophy, Medal, Calendar, LogOut } from "lucide-react";
+import { Code, Users, Trophy, Medal, Calendar, LogOut, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -7,6 +7,11 @@ const navigation = [
     name: "All Students",
     href: "/",
     icon: Users,
+  },
+  {
+    name: "Real-Time Tracker",
+    href: "/tracker",
+    icon: Activity,
   },
   {
     name: "Admin Dashboard",

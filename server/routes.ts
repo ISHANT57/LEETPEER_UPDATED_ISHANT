@@ -94,6 +94,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get complete rankings for all students
+  app.get("/api/rankings/all", async (req, res) => {
+    try {
+      const adminData = await storage.getAdminDashboardData();
+      
+      // Sort students by total problems solved in descending order
+      const rankedStudents = adminData.students
+        .sort((a, b) => b.stats.totalSolved - a.stats.totalSolved)
+        .map((student, index) => ({
+          rank: index + 1,
+          student: {
+            id: student.id,
+            name: student.name,
+            leetcodeUsername: student.leetcodeUsername,
+            leetcodeProfileLink: student.leetcodeProfileLink || `https://leetcode.com/u/${student.leetcodeUsername}/`
+          },
+          stats: student.stats,
+          weeklyProgress: student.weeklyProgress,
+          streak: student.streak,
+          status: student.status,
+          badges: student.badges?.length || 0
+        }));
+
+      res.json(rankedStudents);
+    } catch (error) {
+      console.error('Error fetching rankings:', error);
+      res.status(500).json({ error: 'Failed to fetch rankings' });
+    }
+  });
+
   // Sync single student
   app.post("/api/sync/student/:id", async (req, res) => {
     try {
