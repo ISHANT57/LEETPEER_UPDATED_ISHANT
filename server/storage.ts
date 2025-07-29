@@ -10,8 +10,15 @@ import {
   type AppSettings,
   type LeetCodeStats,
   type StudentDashboardData,
-  type AdminDashboardData
+  type AdminDashboardData,
+  students,
+  dailyProgress,
+  weeklyTrends,
+  badges,
+  appSettings
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -52,116 +59,90 @@ export interface IStorage {
   getStudentStats(studentId: string): Promise<LeetCodeStats | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private students: Map<string, Student> = new Map();
-  private dailyProgress: Map<string, DailyProgress> = new Map();
-  private weeklyTrends: Map<string, WeeklyTrend> = new Map();
-  private badges: Map<string, Badge> = new Map();
-  private appSettings: AppSettings | null = null;
-
+export class DatabaseStorage implements IStorage {
   constructor() {
-    // Initialize with default app settings
-    this.appSettings = {
-      id: randomUUID(),
-      lastSyncTime: null,
-      isAutoSyncEnabled: true,
-    };
+    // Database will be initialized via migrations
   }
 
   async getStudent(id: string): Promise<Student | undefined> {
-    return this.students.get(id);
+    const [student] = await db.select().from(students).where(eq(students.id, id));
+    return student || undefined;
   }
 
   async getStudentByUsername(username: string): Promise<Student | undefined> {
-    return Array.from(this.students.values()).find(
-      student => student.leetcodeUsername === username
-    );
+    const [student] = await db.select().from(students).where(eq(students.leetcodeUsername, username));
+    return student || undefined;
   }
 
   async getAllStudents(): Promise<Student[]> {
-    return Array.from(this.students.values());
+    return await db.select().from(students);
   }
 
   async createStudent(insertStudent: InsertStudent): Promise<Student> {
-    const id = randomUUID();
-    const student: Student = {
-      ...insertStudent,
-      id,
-      createdAt: new Date(),
-    };
-    this.students.set(id, student);
+    const [student] = await db
+      .insert(students)
+      .values(insertStudent)
+      .returning();
     return student;
   }
 
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student | undefined> {
-    const student = this.students.get(id);
-    if (!student) return undefined;
-    
-    const updatedStudent = { ...student, ...updates };
-    this.students.set(id, updatedStudent);
-    return updatedStudent;
+    const [student] = await db
+      .update(students)
+      .set(updates)
+      .where(eq(students.id, id))
+      .returning();
+    return student || undefined;
   }
 
   async getDailyProgress(studentId: string, date: string): Promise<DailyProgress | undefined> {
-    const key = `${studentId}-${date}`;
-    return this.dailyProgress.get(key);
+    const [progress] = await db
+      .select()
+      .from(dailyProgress)
+      .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)));
+    return progress || undefined;
   }
 
   async getStudentDailyProgress(studentId: string, days = 30): Promise<DailyProgress[]> {
-    return Array.from(this.dailyProgress.values())
-      .filter(progress => progress.studentId === studentId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, days);
+    return await db
+      .select()
+      .from(dailyProgress)
+      .where(eq(dailyProgress.studentId, studentId))
+      .orderBy(desc(dailyProgress.date))
+      .limit(days);
   }
 
   async createDailyProgress(insertProgress: InsertDailyProgress): Promise<DailyProgress> {
-    const id = randomUUID();
-    const progress: DailyProgress = {
-      id,
-      studentId: insertProgress.studentId,
-      date: insertProgress.date,
-      totalSolved: insertProgress.totalSolved || 0,
-      easySolved: insertProgress.easySolved || 0,
-      mediumSolved: insertProgress.mediumSolved || 0,
-      hardSolved: insertProgress.hardSolved || 0,
-      dailyIncrement: insertProgress.dailyIncrement || 0,
-      createdAt: new Date(),
-    };
-    const key = `${insertProgress.studentId}-${insertProgress.date}`;
-    this.dailyProgress.set(key, progress);
+    const [progress] = await db
+      .insert(dailyProgress)
+      .values(insertProgress)
+      .returning();
     return progress;
   }
 
   async updateDailyProgress(studentId: string, date: string, updates: Partial<DailyProgress>): Promise<DailyProgress | undefined> {
-    const key = `${studentId}-${date}`;
-    const progress = this.dailyProgress.get(key);
-    if (!progress) return undefined;
-    
-    const updatedProgress = { ...progress, ...updates };
-    this.dailyProgress.set(key, updatedProgress);
-    return updatedProgress;
+    const [progress] = await db
+      .update(dailyProgress)
+      .set(updates)
+      .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)))
+      .returning();
+    return progress || undefined;
   }
 
   async getWeeklyTrends(studentId: string, weeks = 12): Promise<WeeklyTrend[]> {
-    return Array.from(this.weeklyTrends.values())
-      .filter(trend => trend.studentId === studentId)
-      .sort((a, b) => new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime())
-      .slice(0, weeks);
+    return await db
+      .select()
+      .from(weeklyTrends)
+      .where(eq(weeklyTrends.studentId, studentId))
+      .orderBy(desc(weeklyTrends.weekStart))
+      .limit(weeks);
   }
 
   async createWeeklyTrend(insertTrend: InsertWeeklyTrend): Promise<WeeklyTrend> {
-    const id = randomUUID();
-    const trend: WeeklyTrend = {
-      id,
-      studentId: insertTrend.studentId,
-      weekStart: insertTrend.weekStart,
-      weekEnd: insertTrend.weekEnd,
-      totalProblems: insertTrend.totalProblems || 0,
-      weeklyIncrement: insertTrend.weeklyIncrement || 0,
-      ranking: insertTrend.ranking || 0,
-      createdAt: new Date(),
-    };
-    this.weeklyTrends.set(id, trend);
+    const [trend] = await db
+      .insert(weeklyTrends)
+      .values(insertTrend)
+      .returning();
     return trend;
   }
 
@@ -170,41 +151,70 @@ export class MemStorage implements IStorage {
     const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
     const weekStartStr = weekStart.toISOString().split('T')[0];
     
-    return Array.from(this.weeklyTrends.values()).find(
-      trend => trend.studentId === studentId && trend.weekStart === weekStartStr
-    );
+    const [trend] = await db
+      .select()
+      .from(weeklyTrends)
+      .where(and(eq(weeklyTrends.studentId, studentId), eq(weeklyTrends.weekStart, weekStartStr)));
+    return trend || undefined;
   }
 
   async getStudentBadges(studentId: string): Promise<Badge[]> {
-    return Array.from(this.badges.values())
-      .filter(badge => badge.studentId === studentId)
-      .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime());
+    return await db
+      .select()
+      .from(badges)
+      .where(eq(badges.studentId, studentId))
+      .orderBy(desc(badges.earnedAt));
   }
 
   async createBadge(insertBadge: InsertBadge): Promise<Badge> {
-    const id = randomUUID();
-    const badge: Badge = {
-      ...insertBadge,
-      id,
-      earnedAt: new Date(),
-    };
-    this.badges.set(id, badge);
+    const [badge] = await db
+      .insert(badges)
+      .values(insertBadge)
+      .returning();
     return badge;
   }
 
   async hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean> {
-    return Array.from(this.badges.values()).some(
-      badge => badge.studentId === studentId && badge.badgeType === badgeType
-    );
+    const [badge] = await db
+      .select()
+      .from(badges)
+      .where(and(eq(badges.studentId, studentId), eq(badges.badgeType, badgeType)))
+      .limit(1);
+    return !!badge;
   }
 
   async getAppSettings(): Promise<AppSettings | undefined> {
-    return this.appSettings || undefined;
+    const [settings] = await db
+      .select()
+      .from(appSettings)
+      .limit(1);
+    
+    if (!settings) {
+      // Create default settings if none exist
+      const [newSettings] = await db
+        .insert(appSettings)
+        .values({
+          lastSyncTime: null,
+          isAutoSyncEnabled: true,
+        })
+        .returning();
+      return newSettings;
+    }
+    
+    return settings;
   }
 
-  async updateAppSettings(settings: Partial<AppSettings>): Promise<AppSettings> {
-    this.appSettings = { ...this.appSettings!, ...settings };
-    return this.appSettings;
+  async updateAppSettings(updates: Partial<AppSettings>): Promise<AppSettings> {
+    // Get current settings or create if none exist
+    const current = await this.getAppSettings();
+    
+    const [settings] = await db
+      .update(appSettings)
+      .set(updates)
+      .where(eq(appSettings.id, current!.id))
+      .returning();
+    
+    return settings;
   }
 
   async calculateStreak(studentId: string): Promise<number> {
@@ -270,29 +280,35 @@ export class MemStorage implements IStorage {
     }
     
     const currentStreak = await this.calculateStreak(student.id);
-    const badges = await this.getStudentBadges(student.id);
-    const weeklyTrends = await this.getWeeklyTrends(student.id, 7);
+    const badgesList = await this.getStudentBadges(student.id);
+    const weeklyTrendsList = await this.getWeeklyTrends(student.id, 7);
     const dailyProgressList = await this.getStudentDailyProgress(student.id, 30);
     
-    const weeklyProgress = weeklyTrends.map(trend => trend.weeklyIncrement);
+    const weeklyProgress = weeklyTrendsList.map(trend => trend.weeklyIncrement);
     const dailyActivity = dailyProgressList.map(progress => ({
       date: progress.date,
       count: progress.dailyIncrement,
     }));
     
     // Calculate weekly rank (simplified)
-    const allWeeklyTrends = Array.from(this.weeklyTrends.values())
-      .filter(trend => trend.weekStart === weeklyTrends[0]?.weekStart)
-      .sort((a, b) => b.weeklyIncrement - a.weeklyIncrement);
-    
-    const weeklyRank = allWeeklyTrends.findIndex(trend => trend.studentId === student.id) + 1;
+    let weeklyRank = 0;
+    if (weeklyTrendsList.length > 0) {
+      const currentWeekStart = weeklyTrendsList[0].weekStart;
+      const allWeeklyTrendsQuery = await db
+        .select()
+        .from(weeklyTrends)
+        .where(eq(weeklyTrends.weekStart, currentWeekStart))
+        .orderBy(desc(weeklyTrends.weeklyIncrement));
+      
+      weeklyRank = allWeeklyTrendsQuery.findIndex(trend => trend.studentId === student.id) + 1;
+    }
     
     return {
       student,
       stats,
       currentStreak,
       weeklyRank,
-      badges,
+      badges: badgesList,
       weeklyProgress,
       dailyActivity,
     };
@@ -373,4 +389,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
