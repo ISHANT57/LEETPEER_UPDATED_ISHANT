@@ -201,21 +201,21 @@ export class LeetCodeService {
     stats: LeetCodeStats, 
     dailyIncrement: number
   ): Promise<void> {
-    // Check for Century Coder badge
+    // Check for Century Coder badge (100+ total problems)
     if (stats.totalSolved >= 100) {
-      const hascenturyBadge = await storage.hasStudentEarnedBadge(studentId, 'century_coder');
-      if (!hascenturyBadge) {
+      const hasCenturyBadge = await storage.hasStudentEarnedBadge(studentId, 'century_coder');
+      if (!hasCenturyBadge) {
         await storage.createBadge({
           studentId,
           badgeType: 'century_coder',
-          title: 'Century Coder',
-          description: '100+ problems solved',
+          title: '💯 Century Coder',
+          description: '100+ total problems solved',
           icon: 'fas fa-code',
         });
       }
     }
 
-    // Check for Streak Master badge
+    // Check for Streak Master badge (7-day streak of 5+ daily problems)
     const streak = await storage.calculateStreak(studentId);
     if (streak >= 7) {
       const hasStreakBadge = await storage.hasStudentEarnedBadge(studentId, 'streak_master');
@@ -223,22 +223,69 @@ export class LeetCodeService {
         await storage.createBadge({
           studentId,
           badgeType: 'streak_master',
-          title: 'Streak Master',
+          title: '🧐 Streak Master',
           description: '7-day streak of 5+ daily problems',
           icon: 'fas fa-fire',
         });
       }
     }
 
-    // Check for big improvement (Comeback Coder)
-    if (dailyIncrement >= 10) {
-      await storage.createBadge({
-        studentId,
-        badgeType: 'comeback_coder',
-        title: 'Comeback Coder',
-        description: 'Big daily improvement',
-        icon: 'fas fa-chart-line',
-      });
+    // Check for Comeback Coder badge (big week-over-week improvement)
+    const weeklyTrends = await storage.getWeeklyTrends(studentId, 2);
+    if (weeklyTrends.length >= 2) {
+      const thisWeek = weeklyTrends[0];
+      const lastWeek = weeklyTrends[1];
+      const weeklyImprovement = thisWeek.weeklyIncrement - lastWeek.weeklyIncrement;
+      
+      if (weeklyImprovement >= 15) { // Big improvement threshold
+        const hasComebackBadge = await storage.hasStudentEarnedBadge(studentId, 'comeback_coder');
+        if (!hasComebackBadge) {
+          await storage.createBadge({
+            studentId,
+            badgeType: 'comeback_coder',
+            title: '🔥 Comeback Coder',
+            description: 'Big week-over-week improvement',
+            icon: 'fas fa-chart-line',
+          });
+        }
+      }
+    }
+
+    // Check for Consistency Champ badge (30-day challenge completion)
+    const dailyProgress = await storage.getStudentDailyProgress(studentId, 30);
+    const activeDays = dailyProgress.filter(p => p.dailyIncrement > 0).length;
+    
+    if (activeDays >= 30) {
+      const hasConsistencyBadge = await storage.hasStudentEarnedBadge(studentId, 'consistency_champ');
+      if (!hasConsistencyBadge) {
+        await storage.createBadge({
+          studentId,
+          badgeType: 'consistency_champ',
+          title: '🧱 Consistency Champ',
+          description: 'Completed 30-day challenge',
+          icon: 'fas fa-calendar-check',
+        });
+      }
+    }
+
+    // Check for Weekly Topper badge (top performer this week)
+    await this.checkWeeklyTopperBadge(studentId);
+  }
+
+  private async checkWeeklyTopperBadge(studentId: string): Promise<void> {
+    // Get current week rankings
+    const currentWeekTrend = await storage.getCurrentWeekTrend(studentId);
+    if (currentWeekTrend && currentWeekTrend.ranking === 1) {
+      const hasWeeklyTopperBadge = await storage.hasStudentEarnedBadge(studentId, 'weekly_topper');
+      if (!hasWeeklyTopperBadge) {
+        await storage.createBadge({
+          studentId,
+          badgeType: 'weekly_topper',
+          title: '🏆 Weekly Topper',
+          description: 'Top performer this week',
+          icon: 'fas fa-trophy',
+        });
+      }
     }
   }
 }

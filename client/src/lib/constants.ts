@@ -6,28 +6,39 @@ export const DIFFICULTY_COLORS = {
 
 export const BADGE_TYPES = {
   streak_master: {
-    title: 'Streak Master',
+    title: '🧐 Streak Master',
     description: '7-day streak of 5+ daily problems',
     icon: 'fas fa-fire',
-    gradient: 'from-orange-400 to-red-500'
+    gradient: 'from-orange-400 to-red-500',
+    emoji: '🧐'
   },
   century_coder: {
-    title: 'Century Coder',
-    description: '100+ problems solved',
+    title: '💯 Century Coder',
+    description: '100+ total problems solved',
     icon: 'fas fa-code',
-    gradient: 'from-green-400 to-emerald-500'
+    gradient: 'from-green-400 to-emerald-500',
+    emoji: '💯'
   },
   comeback_coder: {
-    title: 'Comeback Coder',
-    description: 'Big improvement',
+    title: '🔥 Comeback Coder',
+    description: 'Big week-over-week improvement',
     icon: 'fas fa-chart-line',
-    gradient: 'from-purple-400 to-pink-500'
+    gradient: 'from-purple-400 to-pink-500',
+    emoji: '🔥'
   },
   weekly_topper: {
-    title: 'Weekly Topper',
+    title: '🏆 Weekly Topper',
     description: 'Top performer this week',
     icon: 'fas fa-trophy',
-    gradient: 'from-yellow-400 to-orange-500'
+    gradient: 'from-yellow-400 to-orange-500',
+    emoji: '🏆'
+  },
+  consistency_champ: {
+    title: '🧱 Consistency Champ',
+    description: 'Completed 30-day challenge',
+    icon: 'fas fa-calendar-check',
+    gradient: 'from-blue-400 to-indigo-500',
+    emoji: '🧱'
   }
 } as const;
 

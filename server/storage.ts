@@ -44,6 +44,7 @@ export interface IStorage {
   getStudentBadges(studentId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
   getBadgeByType(studentId: string, badgeType: string): Promise<Badge | undefined>;
+  getAllBadgesData(): Promise<any>;
 
   // App Settings
   getAppSettings(): Promise<AppSettings | undefined>;
@@ -154,6 +155,67 @@ export class PostgreSQLStorage implements IStorage {
       .where(and(eq(badges.studentId, studentId), eq(badges.badgeType, badgeType)))
       .limit(1);
     return result[0];
+  }
+
+  async getAllBadgesData(): Promise<any> {
+    // Get all badges with student information
+    const allBadges = await db.select({
+      id: badges.id,
+      studentId: badges.studentId,
+      badgeType: badges.badgeType,
+      title: badges.title,
+      description: badges.description,
+      icon: badges.icon,
+      earnedAt: badges.earnedAt,
+      studentName: students.name,
+      studentUsername: students.leetcodeUsername
+    })
+    .from(badges)
+    .innerJoin(students, eq(badges.studentId, students.id))
+    .orderBy(desc(badges.earnedAt));
+
+    // Transform badges to include student info
+    const badgesWithStudents = allBadges.map(badge => ({
+      id: badge.id,
+      studentId: badge.studentId,
+      badgeType: badge.badgeType,
+      title: badge.title,
+      description: badge.description,
+      icon: badge.icon,
+      earnedAt: badge.earnedAt,
+      student: {
+        id: badge.studentId,
+        name: badge.studentName,
+        leetcodeUsername: badge.studentUsername
+      }
+    }));
+
+    // Calculate badge statistics
+    const totalBadges = allBadges.length;
+    const uniqueRecipients = new Set(allBadges.map(b => b.studentId)).size;
+    
+    // Find most popular badge type
+    const badgeTypeCounts = allBadges.reduce((counts, badge) => {
+      counts[badge.badgeType] = (counts[badge.badgeType] || 0) + 1;
+      return counts;
+    }, {} as Record<string, number>);
+    
+    const mostPopularBadge = Object.keys(badgeTypeCounts).reduce((a, b) => 
+      badgeTypeCounts[a] > badgeTypeCounts[b] ? a : b, Object.keys(badgeTypeCounts)[0] || ''
+    );
+
+    // Get recent badges (last 10)
+    const recentBadges = badgesWithStudents.slice(0, 10);
+
+    return {
+      allBadges: badgesWithStudents,
+      badgeStats: {
+        totalBadges,
+        totalRecipients: uniqueRecipients,
+        mostPopularBadge,
+        recentBadges
+      }
+    };
   }
 
   // App Settings

@@ -195,6 +195,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all badges data
+  app.get("/api/badges/all", async (req, res) => {
+    try {
+      const badgesData = await storage.getAllBadgesData();
+      res.json(badgesData);
+    } catch (error) {
+      console.error('Error fetching badges data:', error);
+      res.status(500).json({ error: "Failed to fetch badges data" });
+    }
+  });
+
   // Start the scheduler
   schedulerService.startDailySync();
 

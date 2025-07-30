@@ -9,6 +9,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import Leaderboard from "@/pages/leaderboard";
 import StudentDirectory from "@/pages/student-directory";
 import RealTimeTracker from "@/pages/real-time-tracker";
+import BadgesPage from "@/pages/badges";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,7 +20,7 @@ function Router() {
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/leaderboard" component={Leaderboard} />
       <Route path="/tracker" component={RealTimeTracker} />
-      <Route path="/badges" component={() => <div className="flex-1 p-6">Badges page coming soon...</div>} />
+      <Route path="/badges" component={BadgesPage} />
       <Route path="/trends" component={() => <div className="flex-1 p-6">Trends page coming soon...</div>} />
       <Route component={NotFound} />
     </Switch>
