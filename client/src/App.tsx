@@ -30,7 +30,7 @@ function Router() {
       </Route>
 
       {/* Root redirect based on authentication */}
-      <Route path="~/">
+      <Route path="/">
         {!isAuthenticated ? (
           <Redirect to="/login" />
         ) : isAdmin ? (
