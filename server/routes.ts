@@ -197,3 +197,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+
+
+// Export all student data
+app.get("/api/export/students", async (req, res) => {
+  try {
+    const students = await db.select().from(studentsTable);
+    const studentProgress = await db.select().from(studentProgressTable);
+    
+    const exportData = {
+      students: students.map(s => ({
+        name: s.name,
+        leetcodeUsername: s.leetcodeUsername,
+        leetcodeProfileLink: s.leetcodeProfileLink
+      })),
+      progress: studentProgress,
+      exportedAt: new Date().toISOString()
+    };
+    
+    res.json(exportData);
+  } catch (error) {
+    console.error("Database export error:", error);
+    res.status(500).json({ error: "Failed to export data" });
+  }
+});
+
+// Import student data
+app.post("/api/import/students", async (req, res) => {
+  try {
+    const { students, progress } = req.body;
+    
+    // Insert students
+    if (students && students.length > 0) {
+      await db.insert(studentsTable).values(
+        students.map((s: any) => ({
+          id: crypto.randomUUID(),
+          name: s.name,
+          leetcodeUsername: s.leetcodeUsername,
+          leetcodeProfileLink: s.leetcodeProfileLink,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }))
+      ).onConflictDoNothing();
+    }
+    
+    res.json({ message: "Data imported successfully" });
+  } catch (error) {
+    console.error("Database import error:", error);
+    res.status(500).json({ error: "Failed to import data" });
+  }
+});
+
