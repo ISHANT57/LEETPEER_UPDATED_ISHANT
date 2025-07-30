@@ -58,6 +58,8 @@ export interface IStorage {
   // Helper methods
   hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean>;
   calculateStreak(studentId: string): Promise<number>;
+  getWeeklyTrend(studentId: string, weekStart: string): Promise<WeeklyTrend | undefined>;
+  getLatestDailyProgress(studentId: string): Promise<DailyProgress | undefined>;
 }
 
 export class PostgreSQLStorage implements IStorage {
@@ -390,6 +392,21 @@ export class PostgreSQLStorage implements IStorage {
       }
     }
     return streak;
+  }
+
+  async getWeeklyTrend(studentId: string, weekStart: string): Promise<WeeklyTrend | undefined> {
+    const result = await db.select().from(weeklyTrends)
+      .where(and(eq(weeklyTrends.studentId, studentId), eq(weeklyTrends.weekStart, weekStart)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getLatestDailyProgress(studentId: string): Promise<DailyProgress | undefined> {
+    const result = await db.select().from(dailyProgress)
+      .where(eq(dailyProgress.studentId, studentId))
+      .orderBy(desc(dailyProgress.date))
+      .limit(1);
+    return result[0];
   }
 
   private calculateStreakFromProgress(progress: DailyProgress[]): number {

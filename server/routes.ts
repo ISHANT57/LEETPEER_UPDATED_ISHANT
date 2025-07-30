@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { leetCodeService } from "./services/leetcode";
 import { schedulerService } from "./services/scheduler";
+import { csvImportService } from "./services/csv-import";
+import path from 'path';
 import { insertStudentSchema } from "@shared/schema";
 import studentsData from "../attached_assets/students_1753783623487.json";
 
@@ -206,9 +208,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import students from CSV
+  app.post("/api/import/csv", async (req, res) => {
+    try {
+      const csvFilePath = path.join(process.cwd(), 'attached_assets', 'LeetCode Details (2024-28) - Sheet1_1753877079641.csv');
+      const result = await csvImportService.importFromCSV(csvFilePath);
+      
+      res.json({
+        success: true,
+        message: `Import completed: ${result.imported} students imported, ${result.skipped} skipped`,
+        ...result
+      });
+    } catch (error) {
+      console.error('CSV import error:', error);
+      res.status(500).json({ error: `Failed to import CSV: ${error}` });
+    }
+  });
+
+  // Get analytics data with historical and real-time data
+  app.get("/api/analytics", async (req, res) => {
+    try {
+      const analyticsData = await csvImportService.getAnalyticsData();
+      
+      // Calculate summary statistics
+      const totalStudents = analyticsData.length;
+      const improved = analyticsData.filter(s => s.status === 'improved').length;
+      const declined = analyticsData.filter(s => s.status === 'declined').length;
+      const same = analyticsData.filter(s => s.status === 'same').length;
+      
+      const averageImprovement = analyticsData.reduce((sum, s) => sum + s.improvement, 0) / totalStudents;
+      
+      // Top 10 students for progress trend chart
+      const top10Students = analyticsData
+        .sort((a, b) => b.currentSolved - a.currentSolved)
+        .slice(0, 10);
+      
+      // Top 15 students with most improvement
+      const top15Improvers = analyticsData
+        .filter(s => s.improvement > 0)
+        .sort((a, b) => b.improvement - a.improvement)
+        .slice(0, 15);
+      
+      // Calculate class average progression over time
+      const classAverageProgression = calculateClassAverageProgression(analyticsData);
+      
+      res.json({
+        summaryStats: {
+          totalStudents,
+          improved,
+          declined,
+          same,
+          averageImprovement: Math.round(averageImprovement * 100) / 100
+        },
+        top10Students,
+        top15Improvers,
+        progressCategories: {
+          improved,
+          declined,
+          same
+        },
+        classAverageProgression,
+        allStudentsData: analyticsData
+      });
+      
+    } catch (error) {
+      console.error('Analytics error:', error);
+      res.status(500).json({ error: "Failed to fetch analytics data" });
+    }
+  });
+
   // Start the scheduler
   schedulerService.startDailySync();
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+// Helper function to calculate class average progression
+function calculateClassAverageProgression(analyticsData: any[]) {
+  const weeks = ['Week 1', 'Week 2', 'Week 3', 'Current'];
+  
+  return weeks.map((week, index) => {
+    let average = 0;
+    
+    if (index < 3) {
+      // Historical weeks from CSV data
+      const weekData = analyticsData.map(student => {
+        const weeklyTrend = student.weeklyTrends[index];
+        return weeklyTrend?.totalProblems || 0;
+      });
+      average = weekData.reduce((sum, val) => sum + val, 0) / weekData.length;
+    } else {
+      // Current week from real-time data
+      const currentData = analyticsData.map(student => student.currentSolved);
+      average = currentData.reduce((sum, val) => sum + val, 0) / currentData.length;
+    }
+    
+    return {
+      week,
+      average: Math.round(average * 100) / 100
+    };
+  });
 }

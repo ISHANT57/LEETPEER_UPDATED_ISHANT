@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Code, Users, Trophy, Medal, Calendar, LogOut, Activity } from "lucide-react";
+import { Code, Users, Trophy, Medal, Calendar, LogOut, Activity, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -29,9 +29,9 @@ const navigation = [
     icon: Medal,
   },
   {
-    name: "Weekly Trends",
-    href: "/trends",
-    icon: Calendar,
+    name: "Analytics Dashboard",
+    href: "/analytics",
+    icon: BarChart3,
   },
 ];
 
