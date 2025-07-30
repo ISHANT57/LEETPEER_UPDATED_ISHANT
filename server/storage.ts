@@ -11,10 +11,15 @@ import {
   type AppSettings,
   type LeetCodeStats,
   type StudentDashboardData,
-  type AdminDashboardData
+  type AdminDashboardData,
+  students,
+  dailyProgress,
+  weeklyTrends,
+  badges,
+  appSettings
 } from "@shared/schema";
-import { getDB } from "./mongodb";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, desc, sql, and } from "drizzle-orm";
 
 export interface IStorage {
   // Students
@@ -48,103 +53,77 @@ export interface IStorage {
   getStudentDashboard(studentId: string): Promise<StudentDashboardData | undefined>;
   getAdminDashboard(): Promise<AdminDashboardData>;
   getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
+
+  // Helper methods
+  hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean>;
+  calculateStreak(studentId: string): Promise<number>;
 }
 
-export class MongoDBStorage implements IStorage {
-  private get db() {
-    return getDB();
-  }
-
+export class PostgreSQLStorage implements IStorage {
   // Students
   async getStudent(id: string): Promise<Student | undefined> {
-    const student = await this.db.collection('students').findOne({ id });
-    return student ? this.formatStudent(student) : undefined;
+    const result = await db.select().from(students).where(eq(students.id, id)).limit(1);
+    return result[0];
   }
 
   async getStudentByUsername(username: string): Promise<Student | undefined> {
-    const student = await this.db.collection('students').findOne({ leetcodeUsername: username });
-    return student ? this.formatStudent(student) : undefined;
+    const result = await db.select().from(students).where(eq(students.leetcodeUsername, username)).limit(1);
+    return result[0];
   }
 
   async getAllStudents(): Promise<Student[]> {
-    const students = await this.db.collection('students').find({}).toArray();
-    return students.map(this.formatStudent);
+    return await db.select().from(students);
   }
 
   async createStudent(insertStudent: InsertStudent): Promise<Student> {
-    const student: Student = {
-      id: randomUUID(),
-      ...insertStudent,
-      createdAt: new Date()
-    };
-    
-    await this.db.collection('students').insertOne(student);
-    return student;
+    const result = await db.insert(students).values(insertStudent).returning();
+    return result[0];
   }
 
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student | undefined> {
-    const result = await this.db.collection('students').findOneAndUpdate(
-      { id },
-      { $set: updates },
-      { returnDocument: 'after' }
-    );
-    return result ? this.formatStudent(result) : undefined;
+    const result = await db.update(students).set(updates).where(eq(students.id, id)).returning();
+    return result[0];
   }
 
   // Daily Progress
   async getDailyProgress(studentId: string, date: string): Promise<DailyProgress | undefined> {
-    const progress = await this.db.collection('dailyProgress').findOne({ studentId, date });
-    return progress ? this.formatDailyProgress(progress) : undefined;
+    const result = await db.select().from(dailyProgress)
+      .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)))
+      .limit(1);
+    return result[0];
   }
 
   async getStudentDailyProgress(studentId: string, days = 30): Promise<DailyProgress[]> {
-    const progress = await this.db.collection('dailyProgress')
-      .find({ studentId })
-      .sort({ date: -1 })
-      .limit(days)
-      .toArray();
-    return progress.map(this.formatDailyProgress);
+    return await db.select().from(dailyProgress)
+      .where(eq(dailyProgress.studentId, studentId))
+      .orderBy(desc(dailyProgress.date))
+      .limit(days);
   }
 
   async createDailyProgress(insertProgress: InsertDailyProgress): Promise<DailyProgress> {
-    const progress: DailyProgress = {
-      id: randomUUID(),
-      ...insertProgress,
-      createdAt: new Date()
-    };
-    
-    await this.db.collection('dailyProgress').insertOne(progress);
-    return progress;
+    const result = await db.insert(dailyProgress).values(insertProgress).returning();
+    return result[0];
   }
 
   async updateDailyProgress(studentId: string, date: string, updates: Partial<DailyProgress>): Promise<DailyProgress | undefined> {
-    const result = await this.db.collection('dailyProgress').findOneAndUpdate(
-      { studentId, date },
-      { $set: updates },
-      { returnDocument: 'after' }
-    );
-    return result ? this.formatDailyProgress(result) : undefined;
+    const result = await db.update(dailyProgress)
+      .set(updates)
+      .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)))
+      .returning();
+    return result[0];
   }
 
   // Weekly Trends
   async getWeeklyTrends(studentId: string, weeks = 12): Promise<WeeklyTrend[]> {
-    const trends = await this.db.collection('weeklyTrends')
-      .find({ studentId })
-      .sort({ weekStart: -1 })
-      .limit(weeks)
-      .toArray();
-    return trends.map(this.formatWeeklyTrend);
+    return await db.select().from(weeklyTrends)
+      .where(eq(weeklyTrends.studentId, studentId))
+      .orderBy(desc(weeklyTrends.weekStart))
+      .limit(weeks);
   }
 
   async createWeeklyTrend(insertTrend: InsertWeeklyTrend): Promise<WeeklyTrend> {
-    const trend: WeeklyTrend = {
-      id: randomUUID(),
-      ...insertTrend,
-      createdAt: new Date()
-    };
-    
-    await this.db.collection('weeklyTrends').insertOne(trend);
-    return trend;
+    const result = await db.insert(weeklyTrends).values(insertTrend).returning();
+    return result[0];
   }
 
   async getCurrentWeekTrend(studentId: string): Promise<WeeklyTrend | undefined> {
@@ -152,48 +131,47 @@ export class MongoDBStorage implements IStorage {
     const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
     const weekStart = startOfWeek.toISOString().split('T')[0];
     
-    const trend = await this.db.collection('weeklyTrends').findOne({ studentId, weekStart });
-    return trend ? this.formatWeeklyTrend(trend) : undefined;
+    const result = await db.select().from(weeklyTrends)
+      .where(and(eq(weeklyTrends.studentId, studentId), eq(weeklyTrends.weekStart, weekStart)))
+      .limit(1);
+    return result[0];
   }
 
   // Badges
   async getStudentBadges(studentId: string): Promise<Badge[]> {
-    const badges = await this.db.collection('badges')
-      .find({ studentId })
-      .sort({ earnedAt: -1 })
-      .toArray();
-    return badges.map(this.formatBadge);
+    return await db.select().from(badges)
+      .where(eq(badges.studentId, studentId))
+      .orderBy(desc(badges.earnedAt));
   }
 
   async createBadge(insertBadge: InsertBadge): Promise<Badge> {
-    const badge: Badge = {
-      id: randomUUID(),
-      ...insertBadge,
-      earnedAt: new Date()
-    };
-    
-    await this.db.collection('badges').insertOne(badge);
-    return badge;
+    const result = await db.insert(badges).values(insertBadge).returning();
+    return result[0];
   }
 
   async getBadgeByType(studentId: string, badgeType: string): Promise<Badge | undefined> {
-    const badge = await this.db.collection('badges').findOne({ studentId, badgeType });
-    return badge ? this.formatBadge(badge) : undefined;
+    const result = await db.select().from(badges)
+      .where(and(eq(badges.studentId, studentId), eq(badges.badgeType, badgeType)))
+      .limit(1);
+    return result[0];
   }
 
   // App Settings
   async getAppSettings(): Promise<AppSettings | undefined> {
-    const settings = await this.db.collection('appSettings').findOne({});
-    return settings ? this.formatAppSettings(settings) : undefined;
+    const result = await db.select().from(appSettings).limit(1);
+    return result[0];
   }
 
   async updateAppSettings(updates: Partial<AppSettings>): Promise<AppSettings> {
-    const result = await this.db.collection('appSettings').findOneAndUpdate(
-      {},
-      { $set: updates },
-      { upsert: true, returnDocument: 'after' }
-    );
-    return this.formatAppSettings(result!);
+    // Try to update first, if no rows affected, insert
+    const existing = await this.getAppSettings();
+    if (existing) {
+      const result = await db.update(appSettings).set(updates).where(eq(appSettings.id, existing.id)).returning();
+      return result[0];
+    } else {
+      const result = await db.insert(appSettings).values(updates as any).returning();
+      return result[0];
+    }
   }
 
   // Dashboard methods
@@ -227,7 +205,7 @@ export class MongoDBStorage implements IStorage {
     return {
       student,
       stats,
-      currentStreak: this.calculateStreak(dailyProgress),
+      currentStreak: this.calculateStreakFromProgress(dailyProgress),
       weeklyRank: 1,
       badges,
       weeklyProgress: weeklyTrends.map(t => t.weeklyIncrement),
@@ -244,8 +222,12 @@ export class MongoDBStorage implements IStorage {
 
     const studentsWithStats = await Promise.all(
       students.map(async (student) => {
-        const latestProgress = await this.db.collection('dailyProgress')
-          .findOne({ studentId: student.id }, { sort: { date: -1 } });
+        const latestProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        const latestProgress = latestProgressResult[0];
         
         const stats: LeetCodeStats = latestProgress ? {
           totalSolved: latestProgress.totalSolved,
@@ -307,8 +289,12 @@ export class MongoDBStorage implements IStorage {
     
     const studentsWithScores = await Promise.all(
       students.map(async (student) => {
-        const latestProgress = await this.db.collection('dailyProgress')
-          .findOne({ studentId: student.id }, { sort: { date: -1 } });
+        const latestProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        const latestProgress = latestProgressResult[0];
         
         return {
           student,
@@ -326,64 +312,25 @@ export class MongoDBStorage implements IStorage {
   }
 
   // Helper methods
-  private formatStudent(doc: any): Student {
-    return {
-      id: doc.id,
-      name: doc.name,
-      leetcodeUsername: doc.leetcodeUsername,
-      leetcodeProfileLink: doc.leetcodeProfileLink,
-      createdAt: doc.createdAt
-    };
+  async hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean> {
+    const badge = await this.getBadgeByType(studentId, badgeType);
+    return badge !== undefined;
   }
 
-  private formatDailyProgress(doc: any): DailyProgress {
-    return {
-      id: doc.id,
-      studentId: doc.studentId,
-      date: doc.date,
-      totalSolved: doc.totalSolved,
-      easySolved: doc.easySolved,
-      mediumSolved: doc.mediumSolved,
-      hardSolved: doc.hardSolved,
-      dailyIncrement: doc.dailyIncrement,
-      createdAt: doc.createdAt
-    };
+  async calculateStreak(studentId: string): Promise<number> {
+    const progress = await this.getStudentDailyProgress(studentId, 30);
+    let streak = 0;
+    for (const p of progress) {
+      if (p.dailyIncrement > 0) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
   }
 
-  private formatWeeklyTrend(doc: any): WeeklyTrend {
-    return {
-      id: doc.id,
-      studentId: doc.studentId,
-      weekStart: doc.weekStart,
-      weekEnd: doc.weekEnd,
-      totalProblems: doc.totalProblems,
-      weeklyIncrement: doc.weeklyIncrement,
-      ranking: doc.ranking,
-      createdAt: doc.createdAt
-    };
-  }
-
-  private formatBadge(doc: any): Badge {
-    return {
-      id: doc.id,
-      studentId: doc.studentId,
-      badgeType: doc.badgeType,
-      title: doc.title,
-      description: doc.description,
-      icon: doc.icon,
-      earnedAt: doc.earnedAt
-    };
-  }
-
-  private formatAppSettings(doc: any): AppSettings {
-    return {
-      id: doc.id,
-      lastSyncTime: doc.lastSyncTime,
-      isAutoSyncEnabled: doc.isAutoSyncEnabled
-    };
-  }
-
-  private calculateStreak(progress: DailyProgress[]): number {
+  private calculateStreakFromProgress(progress: DailyProgress[]): number {
     let streak = 0;
     for (const p of progress) {
       if (p.dailyIncrement > 0) {
@@ -396,4 +343,4 @@ export class MongoDBStorage implements IStorage {
   }
 }
 
-export const storage = new MongoDBStorage();
+export const storage = new PostgreSQLStorage();

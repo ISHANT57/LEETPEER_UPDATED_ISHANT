@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { connectMongoDB } from "./mongodb";
+import { db } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -39,8 +39,9 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    await connectMongoDB();
-    console.log('MongoDB connected successfully');
+    // Test database connection
+    await db.execute('SELECT 1');
+    console.log('PostgreSQL connected successfully');
 
     const server = await registerRoutes(app);
 

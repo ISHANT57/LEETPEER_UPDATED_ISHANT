@@ -48,7 +48,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dashboard/student/:username", async (req, res) => {
     try {
       const { username } = req.params;
-      const dashboardData = await storage.getStudentDashboardData(username);
+      const student = await storage.getStudentByUsername(username);
+      if (!student) {
+        return res.status(404).json({ error: "Student not found" });
+      }
+      const dashboardData = await storage.getStudentDashboard(student.id);
       
       if (!dashboardData) {
         return res.status(404).json({ error: "Student not found" });
@@ -64,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get admin dashboard data
   app.get("/api/dashboard/admin", async (req, res) => {
     try {
-      const dashboardData = await storage.getAdminDashboardData();
+      const dashboardData = await storage.getAdminDashboard();
       res.json(dashboardData);
     } catch (error) {
       console.error('Error fetching admin dashboard:', error);
@@ -76,7 +80,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/leaderboard", async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const leaderboard = await storage.getLeaderboard(limit);
+      const leaderboard = await storage.getLeaderboard();
       res.json(leaderboard);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch leaderboard" });
@@ -86,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all students with basic stats for directory
   app.get("/api/students/all", async (req, res) => {
     try {
-      const adminData = await storage.getAdminDashboardData();
+      const adminData = await storage.getAdminDashboard();
       res.json(adminData.students);
     } catch (error) {
       console.error('Error fetching all students:', error);
@@ -97,12 +101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get complete rankings for all students
   app.get("/api/rankings/all", async (req, res) => {
     try {
-      const adminData = await storage.getAdminDashboardData();
+      const adminData = await storage.getAdminDashboard();
       
       // Sort students by total problems solved in descending order
       const rankedStudents = adminData.students
-        .sort((a, b) => b.stats.totalSolved - a.stats.totalSolved)
-        .map((student, index) => ({
+        .sort((a: any, b: any) => b.stats.totalSolved - a.stats.totalSolved)
+        .map((student: any, index: number) => ({
           rank: index + 1,
           student: {
             id: student.id,
@@ -155,13 +159,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Export CSV
   app.get("/api/export/csv", async (req, res) => {
     try {
-      const adminData = await storage.getAdminDashboardData();
+      const adminData = await storage.getAdminDashboard();
       
       // Create CSV content
       const headers = ['Name', 'LeetCode Username', 'Total Solved', 'Weekly Progress', 'Streak', 'Status'];
       const csvContent = [
         headers.join(','),
-        ...adminData.students.map(student => [
+        ...adminData.students.map((student: any) => [
           `"${student.name}"`,
           student.leetcodeUsername,
           student.stats.totalSolved,
