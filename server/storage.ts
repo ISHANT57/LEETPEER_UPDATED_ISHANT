@@ -8,8 +8,6 @@ import {
   type InsertWeeklyTrend,
   type Badge,
   type InsertBadge,
-  type User,
-  type InsertUser,
   type AppSettings,
   type LeetCodeStats,
   type StudentDashboardData,
@@ -18,7 +16,6 @@ import {
   dailyProgress,
   weeklyTrends,
   badges,
-  users,
   appSettings
 } from "@shared/schema";
 import { db } from "./db";
@@ -57,12 +54,6 @@ export interface IStorage {
   getStudentDashboard(studentId: string): Promise<StudentDashboardData | undefined>;
   getAdminDashboard(): Promise<AdminDashboardData>;
   getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
-
-  // User management
-  getUserById(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUserLastLogin(id: string): Promise<void>;
 
   // Helper methods
   hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean>;
@@ -380,28 +371,6 @@ export class PostgreSQLStorage implements IStorage {
         rank: index + 1,
         ...item
       }));
-  }
-
-  // User management
-  async getUserById(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    return result[0];
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(insertUser).returning();
-    return result[0];
-  }
-
-  async updateUserLastLogin(id: string): Promise<void> {
-    await db.update(users)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, id));
   }
 
   // Helper methods

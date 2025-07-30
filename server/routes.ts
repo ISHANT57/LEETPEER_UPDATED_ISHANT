@@ -3,19 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { leetCodeService } from "./services/leetcode";
 import { schedulerService } from "./services/scheduler";
-import { authenticateToken, requireRole, requireStudentOrAdmin } from "./middleware/auth";
 import { insertStudentSchema } from "@shared/schema";
-import authRoutes from "./routes/auth";
-import { initializeUsers } from "./scripts/init-users";
 import studentsData from "../attached_assets/students_1753783623487.json";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize users and authentication
-  await initializeUsers();
-
-  // Mount auth routes
-  app.use('/api/auth', authRoutes);
-
   // Initialize students from JSON file
   app.post("/api/init-students", async (req, res) => {
     try {
