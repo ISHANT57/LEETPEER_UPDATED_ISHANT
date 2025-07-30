@@ -1,3 +1,4 @@
+
 import { 
   type Student, 
   type InsertStudent,
@@ -10,15 +11,9 @@ import {
   type AppSettings,
   type LeetCodeStats,
   type StudentDashboardData,
-  type AdminDashboardData,
-  students,
-  dailyProgress,
-  weeklyTrends,
-  badges,
-  appSettings
+  type AdminDashboardData
 } from "@shared/schema";
-import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { getDB } from "./mongodb";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -43,323 +38,247 @@ export interface IStorage {
   // Badges
   getStudentBadges(studentId: string): Promise<Badge[]>;
   createBadge(badge: InsertBadge): Promise<Badge>;
-  hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean>;
+  getBadgeByType(studentId: string, badgeType: string): Promise<Badge | undefined>;
 
   // App Settings
   getAppSettings(): Promise<AppSettings | undefined>;
   updateAppSettings(settings: Partial<AppSettings>): Promise<AppSettings>;
 
-  // Dashboard Data
-  getStudentDashboardData(username: string): Promise<StudentDashboardData | undefined>;
-  getAdminDashboardData(): Promise<AdminDashboardData>;
-  getLeaderboard(limit?: number): Promise<AdminDashboardData['leaderboard']>;
-
-  // Utility methods
-  calculateStreak(studentId: string): Promise<number>;
-  getStudentStats(studentId: string): Promise<LeetCodeStats | undefined>;
+  // Dashboard data
+  getStudentDashboard(studentId: string): Promise<StudentDashboardData | undefined>;
+  getAdminDashboard(): Promise<AdminDashboardData>;
+  getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
 }
 
-export class DatabaseStorage implements IStorage {
-  constructor() {
-    // Database will be initialized via migrations
+export class MongoDBStorage implements IStorage {
+  private get db() {
+    return getDB();
   }
 
+  // Students
   async getStudent(id: string): Promise<Student | undefined> {
-    const [student] = await db.select().from(students).where(eq(students.id, id));
-    return student || undefined;
+    const student = await this.db.collection('students').findOne({ id });
+    return student ? this.formatStudent(student) : undefined;
   }
 
   async getStudentByUsername(username: string): Promise<Student | undefined> {
-    const [student] = await db.select().from(students).where(eq(students.leetcodeUsername, username));
-    return student || undefined;
+    const student = await this.db.collection('students').findOne({ leetcodeUsername: username });
+    return student ? this.formatStudent(student) : undefined;
   }
 
   async getAllStudents(): Promise<Student[]> {
-    return await db.select().from(students);
+    const students = await this.db.collection('students').find({}).toArray();
+    return students.map(this.formatStudent);
   }
 
   async createStudent(insertStudent: InsertStudent): Promise<Student> {
-    const [student] = await db
-      .insert(students)
-      .values(insertStudent)
-      .returning();
+    const student: Student = {
+      id: randomUUID(),
+      ...insertStudent,
+      createdAt: new Date()
+    };
+    
+    await this.db.collection('students').insertOne(student);
     return student;
   }
 
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student | undefined> {
-    const [student] = await db
-      .update(students)
-      .set(updates)
-      .where(eq(students.id, id))
-      .returning();
-    return student || undefined;
+    const result = await this.db.collection('students').findOneAndUpdate(
+      { id },
+      { $set: updates },
+      { returnDocument: 'after' }
+    );
+    return result ? this.formatStudent(result) : undefined;
   }
 
+  // Daily Progress
   async getDailyProgress(studentId: string, date: string): Promise<DailyProgress | undefined> {
-    const [progress] = await db
-      .select()
-      .from(dailyProgress)
-      .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)));
-    return progress || undefined;
+    const progress = await this.db.collection('dailyProgress').findOne({ studentId, date });
+    return progress ? this.formatDailyProgress(progress) : undefined;
   }
 
   async getStudentDailyProgress(studentId: string, days = 30): Promise<DailyProgress[]> {
-    return await db
-      .select()
-      .from(dailyProgress)
-      .where(eq(dailyProgress.studentId, studentId))
-      .orderBy(desc(dailyProgress.date))
-      .limit(days);
+    const progress = await this.db.collection('dailyProgress')
+      .find({ studentId })
+      .sort({ date: -1 })
+      .limit(days)
+      .toArray();
+    return progress.map(this.formatDailyProgress);
   }
 
   async createDailyProgress(insertProgress: InsertDailyProgress): Promise<DailyProgress> {
-    const [progress] = await db
-      .insert(dailyProgress)
-      .values(insertProgress)
-      .returning();
+    const progress: DailyProgress = {
+      id: randomUUID(),
+      ...insertProgress,
+      createdAt: new Date()
+    };
+    
+    await this.db.collection('dailyProgress').insertOne(progress);
     return progress;
   }
 
   async updateDailyProgress(studentId: string, date: string, updates: Partial<DailyProgress>): Promise<DailyProgress | undefined> {
-    const [progress] = await db
-      .update(dailyProgress)
-      .set(updates)
-      .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)))
-      .returning();
-    return progress || undefined;
+    const result = await this.db.collection('dailyProgress').findOneAndUpdate(
+      { studentId, date },
+      { $set: updates },
+      { returnDocument: 'after' }
+    );
+    return result ? this.formatDailyProgress(result) : undefined;
   }
 
+  // Weekly Trends
   async getWeeklyTrends(studentId: string, weeks = 12): Promise<WeeklyTrend[]> {
-    return await db
-      .select()
-      .from(weeklyTrends)
-      .where(eq(weeklyTrends.studentId, studentId))
-      .orderBy(desc(weeklyTrends.weekStart))
-      .limit(weeks);
+    const trends = await this.db.collection('weeklyTrends')
+      .find({ studentId })
+      .sort({ weekStart: -1 })
+      .limit(weeks)
+      .toArray();
+    return trends.map(this.formatWeeklyTrend);
   }
 
   async createWeeklyTrend(insertTrend: InsertWeeklyTrend): Promise<WeeklyTrend> {
-    const [trend] = await db
-      .insert(weeklyTrends)
-      .values(insertTrend)
-      .returning();
+    const trend: WeeklyTrend = {
+      id: randomUUID(),
+      ...insertTrend,
+      createdAt: new Date()
+    };
+    
+    await this.db.collection('weeklyTrends').insertOne(trend);
     return trend;
   }
 
   async getCurrentWeekTrend(studentId: string): Promise<WeeklyTrend | undefined> {
     const now = new Date();
-    const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    const weekStart = startOfWeek.toISOString().split('T')[0];
     
-    const [trend] = await db
-      .select()
-      .from(weeklyTrends)
-      .where(and(eq(weeklyTrends.studentId, studentId), eq(weeklyTrends.weekStart, weekStartStr)));
-    return trend || undefined;
+    const trend = await this.db.collection('weeklyTrends').findOne({ studentId, weekStart });
+    return trend ? this.formatWeeklyTrend(trend) : undefined;
   }
 
+  // Badges
   async getStudentBadges(studentId: string): Promise<Badge[]> {
-    return await db
-      .select()
-      .from(badges)
-      .where(eq(badges.studentId, studentId))
-      .orderBy(desc(badges.earnedAt));
+    const badges = await this.db.collection('badges')
+      .find({ studentId })
+      .sort({ earnedAt: -1 })
+      .toArray();
+    return badges.map(this.formatBadge);
   }
 
   async createBadge(insertBadge: InsertBadge): Promise<Badge> {
-    const [badge] = await db
-      .insert(badges)
-      .values(insertBadge)
-      .returning();
+    const badge: Badge = {
+      id: randomUUID(),
+      ...insertBadge,
+      earnedAt: new Date()
+    };
+    
+    await this.db.collection('badges').insertOne(badge);
     return badge;
   }
 
-  async hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean> {
-    const [badge] = await db
-      .select()
-      .from(badges)
-      .where(and(eq(badges.studentId, studentId), eq(badges.badgeType, badgeType)))
-      .limit(1);
-    return !!badge;
+  async getBadgeByType(studentId: string, badgeType: string): Promise<Badge | undefined> {
+    const badge = await this.db.collection('badges').findOne({ studentId, badgeType });
+    return badge ? this.formatBadge(badge) : undefined;
   }
 
+  // App Settings
   async getAppSettings(): Promise<AppSettings | undefined> {
-    const [settings] = await db
-      .select()
-      .from(appSettings)
-      .limit(1);
-    
-    if (!settings) {
-      // Create default settings if none exist
-      const [newSettings] = await db
-        .insert(appSettings)
-        .values({
-          lastSyncTime: null,
-          isAutoSyncEnabled: true,
-        })
-        .returning();
-      return newSettings;
-    }
-    
-    return settings;
+    const settings = await this.db.collection('appSettings').findOne({});
+    return settings ? this.formatAppSettings(settings) : undefined;
   }
 
   async updateAppSettings(updates: Partial<AppSettings>): Promise<AppSettings> {
-    // Get current settings or create if none exist
-    const current = await this.getAppSettings();
-    
-    const [settings] = await db
-      .update(appSettings)
-      .set(updates)
-      .where(eq(appSettings.id, current!.id))
-      .returning();
-    
-    return settings;
+    const result = await this.db.collection('appSettings').findOneAndUpdate(
+      {},
+      { $set: updates },
+      { upsert: true, returnDocument: 'after' }
+    );
+    return this.formatAppSettings(result!);
   }
 
-  async calculateStreak(studentId: string): Promise<number> {
-    const progressList = await this.getStudentDailyProgress(studentId, 100);
-    let streak = 0;
-    const today = new Date();
-    
-    for (let i = 0; i < progressList.length; i++) {
-      const progress = progressList[i];
-      const progressDate = new Date(progress.date);
-      const daysDiff = Math.floor((today.getTime() - progressDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (daysDiff === i && progress.dailyIncrement >= 5) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-    
-    return streak;
-  }
-
-  async getStudentStats(studentId: string): Promise<LeetCodeStats | undefined> {
-    const latestProgress = await this.getStudentDailyProgress(studentId, 1);
-    if (latestProgress.length === 0) return undefined;
-    
-    const progress = latestProgress[0];
-    return {
-      totalSolved: progress.totalSolved,
-      easySolved: progress.easySolved,
-      mediumSolved: progress.mediumSolved,
-      hardSolved: progress.hardSolved,
-      acceptanceRate: 0, // Would be calculated from more detailed data
-      ranking: 0, // Would be calculated from leaderboard
-    };
-  }
-
-  async getStudentDashboardData(username: string): Promise<StudentDashboardData | undefined> {
-    const student = await this.getStudentByUsername(username);
+  // Dashboard methods
+  async getStudentDashboard(studentId: string): Promise<StudentDashboardData | undefined> {
+    const student = await this.getStudent(studentId);
     if (!student) return undefined;
-    
-    const stats = await this.getStudentStats(student.id);
-    if (!stats) {
-      // Return default stats if no progress data
-      const defaultStats = {
-        totalSolved: 0,
-        easySolved: 0,
-        mediumSolved: 0,
-        hardSolved: 0,
-        acceptanceRate: 0,
-        ranking: 0,
-      };
-      
-      return {
-        student,
-        stats: defaultStats,
-        currentStreak: 0,
-        weeklyRank: 0,
-        badges: [],
-        weeklyProgress: [],
-        dailyActivity: [],
-      };
-    }
-    
-    const currentStreak = await this.calculateStreak(student.id);
-    const badgesList = await this.getStudentBadges(student.id);
-    const weeklyTrendsList = await this.getWeeklyTrends(student.id, 7);
-    const dailyProgressList = await this.getStudentDailyProgress(student.id, 30);
-    
-    const weeklyProgress = weeklyTrendsList.map(trend => trend.weeklyIncrement);
-    const dailyActivity = dailyProgressList.map(progress => ({
-      date: progress.date,
-      count: progress.dailyIncrement,
-    }));
-    
-    // Calculate weekly rank (simplified)
-    let weeklyRank = 0;
-    if (weeklyTrendsList.length > 0) {
-      const currentWeekStart = weeklyTrendsList[0].weekStart;
-      const allWeeklyTrendsQuery = await db
-        .select()
-        .from(weeklyTrends)
-        .where(eq(weeklyTrends.weekStart, currentWeekStart))
-        .orderBy(desc(weeklyTrends.weeklyIncrement));
-      
-      weeklyRank = allWeeklyTrendsQuery.findIndex(trend => trend.studentId === student.id) + 1;
-    }
-    
+
+    const [dailyProgress, badges, weeklyTrends] = await Promise.all([
+      this.getStudentDailyProgress(studentId, 30),
+      this.getStudentBadges(studentId),
+      this.getWeeklyTrends(studentId, 12)
+    ]);
+
+    const latestProgress = dailyProgress[0];
+    const stats: LeetCodeStats = latestProgress ? {
+      totalSolved: latestProgress.totalSolved,
+      easySolved: latestProgress.easySolved,
+      mediumSolved: latestProgress.mediumSolved,
+      hardSolved: latestProgress.hardSolved,
+      acceptanceRate: 0,
+      ranking: 0
+    } : {
+      totalSolved: 0,
+      easySolved: 0,
+      mediumSolved: 0,
+      hardSolved: 0,
+      acceptanceRate: 0,
+      ranking: 0
+    };
+
     return {
       student,
       stats,
-      currentStreak,
-      weeklyRank,
-      badges: badgesList,
-      weeklyProgress,
-      dailyActivity,
+      currentStreak: this.calculateStreak(dailyProgress),
+      weeklyRank: 1,
+      badges,
+      weeklyProgress: weeklyTrends.map(t => t.weeklyIncrement),
+      dailyActivity: dailyProgress.map(p => ({
+        date: p.date,
+        count: p.dailyIncrement
+      }))
     };
   }
 
-  async getAdminDashboardData(): Promise<AdminDashboardData> {
-    const allStudents = await this.getAllStudents();
-    const totalStudents = allStudents.length;
-    
-    let activeStudents = 0;
-    let totalProblems = 0;
-    let underperforming = 0;
-    
+  async getAdminDashboard(): Promise<AdminDashboardData> {
+    const students = await this.getAllStudents();
+    const totalStudents = students.length;
+
     const studentsWithStats = await Promise.all(
-      allStudents.map(async (student) => {
-        const stats = await this.getStudentStats(student.id) || {
+      students.map(async (student) => {
+        const latestProgress = await this.db.collection('dailyProgress')
+          .findOne({ studentId: student.id }, { sort: { date: -1 } });
+        
+        const stats: LeetCodeStats = latestProgress ? {
+          totalSolved: latestProgress.totalSolved,
+          easySolved: latestProgress.easySolved,
+          mediumSolved: latestProgress.mediumSolved,
+          hardSolved: latestProgress.hardSolved,
+          acceptanceRate: 0,
+          ranking: 0
+        } : {
           totalSolved: 0,
           easySolved: 0,
           mediumSolved: 0,
           hardSolved: 0,
           acceptanceRate: 0,
-          ranking: 0,
+          ranking: 0
         };
-        
-        const currentWeek = await this.getCurrentWeekTrend(student.id);
-        const weeklyProgress = currentWeek?.weeklyIncrement || 0;
-        const streak = await this.calculateStreak(student.id);
-        
-        totalProblems += stats.totalSolved;
-        
-        if (weeklyProgress > 0) activeStudents++;
-        if (weeklyProgress < 5) underperforming++;
-        
-        const status = weeklyProgress >= 15 ? 'Excellent' : 
-                      weeklyProgress >= 5 ? 'Active' : 'Underperforming';
-        
+
         return {
           ...student,
           stats,
-          weeklyProgress,
-          streak,
-          status,
+          weeklyProgress: 0,
+          streak: 0,
+          status: stats.totalSolved > 0 ? 'active' : 'inactive'
         };
       })
     );
-    
-    const avgProblems = totalStudents > 0 ? Math.round((totalProblems / totalStudents) * 10) / 10 : 0;
-    
-    // Create leaderboard
+
+    const activeStudents = studentsWithStats.filter(s => s.status === 'active').length;
+    const avgProblems = studentsWithStats.reduce((sum, s) => sum + s.stats.totalSolved, 0) / totalStudents;
+    const underperforming = studentsWithStats.filter(s => s.stats.totalSolved < avgProblems * 0.7).length;
+
     const leaderboard = studentsWithStats
-      .sort((a, b) => b.weeklyProgress - a.weeklyProgress)
+      .sort((a, b) => b.stats.totalSolved - a.stats.totalSolved)
       .slice(0, 10)
       .map((student, index) => ({
         rank: index + 1,
@@ -368,25 +287,113 @@ export class DatabaseStorage implements IStorage {
           name: student.name,
           leetcodeUsername: student.leetcodeUsername,
           leetcodeProfileLink: student.leetcodeProfileLink,
-          createdAt: student.createdAt,
+          createdAt: student.createdAt
         },
-        weeklyScore: student.weeklyProgress,
+        weeklyScore: student.stats.totalSolved
       }));
-    
+
     return {
       totalStudents,
       activeStudents,
       avgProblems,
       underperforming,
       students: studentsWithStats,
-      leaderboard,
+      leaderboard
     };
   }
 
-  async getLeaderboard(limit = 10): Promise<AdminDashboardData['leaderboard']> {
-    const adminData = await this.getAdminDashboardData();
-    return adminData.leaderboard.slice(0, limit);
+  async getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>> {
+    const students = await this.getAllStudents();
+    
+    const studentsWithScores = await Promise.all(
+      students.map(async (student) => {
+        const latestProgress = await this.db.collection('dailyProgress')
+          .findOne({ studentId: student.id }, { sort: { date: -1 } });
+        
+        return {
+          student,
+          weeklyScore: latestProgress?.totalSolved || 0
+        };
+      })
+    );
+
+    return studentsWithScores
+      .sort((a, b) => b.weeklyScore - a.weeklyScore)
+      .map((item, index) => ({
+        rank: index + 1,
+        ...item
+      }));
+  }
+
+  // Helper methods
+  private formatStudent(doc: any): Student {
+    return {
+      id: doc.id,
+      name: doc.name,
+      leetcodeUsername: doc.leetcodeUsername,
+      leetcodeProfileLink: doc.leetcodeProfileLink,
+      createdAt: doc.createdAt
+    };
+  }
+
+  private formatDailyProgress(doc: any): DailyProgress {
+    return {
+      id: doc.id,
+      studentId: doc.studentId,
+      date: doc.date,
+      totalSolved: doc.totalSolved,
+      easySolved: doc.easySolved,
+      mediumSolved: doc.mediumSolved,
+      hardSolved: doc.hardSolved,
+      dailyIncrement: doc.dailyIncrement,
+      createdAt: doc.createdAt
+    };
+  }
+
+  private formatWeeklyTrend(doc: any): WeeklyTrend {
+    return {
+      id: doc.id,
+      studentId: doc.studentId,
+      weekStart: doc.weekStart,
+      weekEnd: doc.weekEnd,
+      totalProblems: doc.totalProblems,
+      weeklyIncrement: doc.weeklyIncrement,
+      ranking: doc.ranking,
+      createdAt: doc.createdAt
+    };
+  }
+
+  private formatBadge(doc: any): Badge {
+    return {
+      id: doc.id,
+      studentId: doc.studentId,
+      badgeType: doc.badgeType,
+      title: doc.title,
+      description: doc.description,
+      icon: doc.icon,
+      earnedAt: doc.earnedAt
+    };
+  }
+
+  private formatAppSettings(doc: any): AppSettings {
+    return {
+      id: doc.id,
+      lastSyncTime: doc.lastSyncTime,
+      isAutoSyncEnabled: doc.isAutoSyncEnabled
+    };
+  }
+
+  private calculateStreak(progress: DailyProgress[]): number {
+    let streak = 0;
+    for (const p of progress) {
+      if (p.dailyIncrement > 0) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MongoDBStorage();
