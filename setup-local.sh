@@ -26,8 +26,8 @@ npm install
 if [ ! -f .env ]; then
     echo "📝 Creating .env file with Neon.tech configuration..."
     cat > .env << EOL
-# Neon.tech PostgreSQL Database (REPLACE WITH YOUR ACTUAL CONNECTION STRING)
-DATABASE_URL=postgresql://username:password@ep-xyz-123.us-east-2.aws.neon.tech/leetcode_tracker?sslmode=require
+# Your Neon.tech PostgreSQL Database (CONFIGURED)
+DATABASE_URL=postgresql://neondb_owner:npg_iUAJg7HPzhn5@ep-bold-wind-a27odj2x-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
 # Application Configuration  
 NODE_ENV=development
