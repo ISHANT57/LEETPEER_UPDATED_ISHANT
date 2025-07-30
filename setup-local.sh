@@ -24,38 +24,51 @@ npm install
 
 # Check if .env file exists
 if [ ! -f .env ]; then
-    echo "📝 Creating .env file..."
+    echo "📝 Creating .env file with Neon.tech configuration..."
     cat > .env << EOL
-# Database Configuration
-DATABASE_URL=postgresql://username:password@localhost:5432/leetcode_tracker
+# Neon.tech PostgreSQL Database (REPLACE WITH YOUR ACTUAL CONNECTION STRING)
+DATABASE_URL=postgresql://username:password@ep-xyz-123.us-east-2.aws.neon.tech/leetcode_tracker?sslmode=require
 
-# Application Configuration
+# Application Configuration  
 NODE_ENV=development
 PORT=5000
 
-# Optional: Add your database URL here
-# For local PostgreSQL: postgresql://username:password@localhost:5432/leetcode_tracker
-# For Neon.tech: postgresql://username:password@hostname/database?sslmode=require
-# For Supabase: postgresql://postgres:password@hostname:5432/postgres
+# SETUP INSTRUCTIONS:
+# 1. Go to https://neon.tech and create a free account
+# 2. Create a new project named "leetcode-tracker"
+# 3. Copy your connection string (starts with postgresql://)
+# 4. Replace the DATABASE_URL above with your actual Neon connection string
+# 5. Run: npm run db:push
+# 6. Run: npm run dev
+
+# Example Neon URL format:
+# DATABASE_URL=postgresql://username:password@ep-abc123-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require
 EOL
-    echo "⚠️  Please update the DATABASE_URL in .env with your actual database credentials"
+    echo "⚠️  Please update the DATABASE_URL in .env with your Neon.tech connection string"
 else
     echo "✅ .env file already exists"
 fi
 
-echo "🗄️  Database Setup Instructions:"
 echo ""
-echo "Choose one of the following options:"
+echo "🗄️  Neon.tech Database Setup (RECOMMENDED - Free & Easy):"
 echo ""
-echo "Option 1 - Local PostgreSQL:"
-echo "  1. Install PostgreSQL: https://www.postgresql.org/download/"
-echo "  2. Create database: createdb leetcode_tracker"
-echo "  3. Update .env with: DATABASE_URL=postgresql://username:password@localhost:5432/leetcode_tracker"
+echo "✅ Your app is pre-configured for Neon.tech PostgreSQL"
+echo "✅ All data will be automatically saved and stored in Neon"
 echo ""
-echo "Option 2 - Cloud Database (Recommended):"
-echo "  1. Visit https://neon.tech/ or https://supabase.com/"
-echo "  2. Create a free PostgreSQL database"
-echo "  3. Copy the connection string to .env"
+echo "Quick Setup Steps:"
+echo "  1. Visit: https://neon.tech"
+echo "  2. Sign up with GitHub/Google (free account)"
+echo "  3. Create new project: 'leetcode-tracker'"
+echo "  4. Copy connection string to .env file"
+echo "  5. Run: npm run db:push"
+echo "  6. Run: npm run dev"
+echo ""
+echo "📊 Data Storage Features:"
+echo "  ✅ CSV import data → Stored permanently in Neon"
+echo "  ✅ Real-time LeetCode sync → All progress saved"
+echo "  ✅ Analytics & trends → Calculated from stored data"
+echo "  ✅ Student badges → Achievement history preserved"
+echo "  ✅ Auto-backup → Neon provides daily backups"
 echo ""
 echo "After setting up the database:"
 echo "  1. Run: npm run db:push"
