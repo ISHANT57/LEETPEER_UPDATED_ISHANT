@@ -46,6 +46,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete student by username
+  app.delete("/api/students/:username", async (req, res) => {
+    try {
+      const { username } = req.params;
+      const success = await storage.deleteStudentByUsername(username);
+      if (success) {
+        res.json({ message: `Student ${username} deleted successfully` });
+      } else {
+        res.status(404).json({ error: "Student not found or failed to delete" });
+      }
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      res.status(500).json({ error: "Failed to delete student" });
+    }
+  });
+
+  // Bulk delete students
+  app.post("/api/students/bulk-delete", async (req, res) => {
+    try {
+      const { usernames } = req.body;
+      if (!Array.isArray(usernames)) {
+        return res.status(400).json({ error: "Usernames must be an array" });
+      }
+
+      const results = await Promise.allSettled(
+        usernames.map(username => storage.deleteStudentByUsername(username))
+      );
+
+      const successful = results.filter(result => result.status === 'fulfilled' && result.value).length;
+      const failed = results.length - successful;
+
+      res.json({ 
+        message: `Bulk delete completed: ${successful} successful, ${failed} failed`,
+        successful,
+        failed,
+        total: results.length
+      });
+    } catch (error) {
+      console.error('Error bulk deleting students:', error);
+      res.status(500).json({ error: "Failed to bulk delete students" });
+    }
+  });
+
   // Get student dashboard data
   app.get("/api/dashboard/student/:username", async (req, res) => {
     try {
@@ -222,6 +265,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('CSV import error:', error);
       res.status(500).json({ error: `Failed to import CSV: ${error}` });
+    }
+  });
+
+  // Import updated students data from new CSV format
+  app.post("/api/import/updated-csv", async (req, res) => {
+    try {
+      const csvFilePath = path.join(process.cwd(), 'attached_assets', 'LEETCODE UPDATED DATA SHEET_1753968848855.csv');
+      const result = await csvImportService.importUpdatedCSV(csvFilePath);
+      
+      res.json({
+        success: true,
+        message: `Update completed: ${result.updated} students updated, ${result.created} created, ${result.skipped} skipped`,
+        ...result
+      });
+    } catch (error) {
+      console.error('CSV update error:', error);
+      res.status(500).json({ error: `Failed to update from CSV: ${error}` });
     }
   });
 

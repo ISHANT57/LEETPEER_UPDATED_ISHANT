@@ -28,17 +28,21 @@ export interface IStorage {
   getAllStudents(): Promise<Student[]>;
   createStudent(student: InsertStudent): Promise<Student>;
   updateStudent(id: string, updates: Partial<Student>): Promise<Student | undefined>;
+  deleteStudent(id: string): Promise<boolean>;
+  deleteStudentByUsername(username: string): Promise<boolean>;
 
   // Daily Progress
   getDailyProgress(studentId: string, date: string): Promise<DailyProgress | undefined>;
   getStudentDailyProgress(studentId: string, days?: number): Promise<DailyProgress[]>;
   createDailyProgress(progress: InsertDailyProgress): Promise<DailyProgress>;
   updateDailyProgress(studentId: string, date: string, updates: Partial<DailyProgress>): Promise<DailyProgress | undefined>;
+  deleteDailyProgress(studentId: string, date: string): Promise<boolean>;
 
   // Weekly Trends
   getWeeklyTrends(studentId: string, weeks?: number): Promise<WeeklyTrend[]>;
   createWeeklyTrend(trend: InsertWeeklyTrend): Promise<WeeklyTrend>;
   getCurrentWeekTrend(studentId: string): Promise<WeeklyTrend | undefined>;
+  deleteWeeklyTrend(studentId: string, weekStart: string): Promise<boolean>;
 
   // Badges
   getStudentBadges(studentId: string): Promise<Badge[]>;
@@ -86,6 +90,34 @@ export class PostgreSQLStorage implements IStorage {
   async updateStudent(id: string, updates: Partial<Student>): Promise<Student | undefined> {
     const result = await db.update(students).set(updates).where(eq(students.id, id)).returning();
     return result[0];
+  }
+
+  async deleteStudent(id: string): Promise<boolean> {
+    try {
+      // First delete all related data
+      await db.delete(badges).where(eq(badges.studentId, id));
+      await db.delete(weeklyTrends).where(eq(weeklyTrends.studentId, id));
+      await db.delete(dailyProgress).where(eq(dailyProgress.studentId, id));
+      
+      // Then delete the student
+      const result = await db.delete(students).where(eq(students.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      return false;
+    }
+  }
+
+  async deleteStudentByUsername(username: string): Promise<boolean> {
+    try {
+      const student = await this.getStudentByUsername(username);
+      if (!student) return false;
+      
+      return await this.deleteStudent(student.id);
+    } catch (error) {
+      console.error('Error deleting student by username:', error);
+      return false;
+    }
   }
 
   // Daily Progress
@@ -138,6 +170,28 @@ export class PostgreSQLStorage implements IStorage {
       .where(and(eq(weeklyTrends.studentId, studentId), eq(weeklyTrends.weekStart, weekStart)))
       .limit(1);
     return result[0];
+  }
+
+  async deleteWeeklyTrend(studentId: string, weekStart: string): Promise<boolean> {
+    try {
+      await db.delete(weeklyTrends)
+        .where(and(eq(weeklyTrends.studentId, studentId), eq(weeklyTrends.weekStart, weekStart)));
+      return true;
+    } catch (error) {
+      console.error('Error deleting weekly trend:', error);
+      return false;
+    }
+  }
+
+  async deleteDailyProgress(studentId: string, date: string): Promise<boolean> {
+    try {
+      await db.delete(dailyProgress)
+        .where(and(eq(dailyProgress.studentId, studentId), eq(dailyProgress.date, date)));
+      return true;
+    } catch (error) {
+      console.error('Error deleting daily progress:', error);
+      return false;
+    }
   }
 
   // Badges
