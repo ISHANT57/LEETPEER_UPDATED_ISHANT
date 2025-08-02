@@ -24,6 +24,7 @@ interface StudentRanking {
     easySolved: number;
     mediumSolved: number;
     hardSolved: number;
+    ranking: number;
   };
   weeklyProgress: number;
   streak: number;
@@ -68,7 +69,7 @@ export default function RealTimeTracker() {
 
   const handleFullSync = async () => {
     try {
-      const result = await apiRequest('POST', '/api/sync/all') as { success: number; failed: number };
+      const result = await apiRequest('POST', '/api/sync/all') as any;
       await refetch();
       toast({
         title: "Full sync completed",
@@ -237,6 +238,9 @@ export default function RealTimeTracker() {
                       Problems Solved
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      LeetCode Ranking
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Difficulty Breakdown
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -281,6 +285,14 @@ export default function RealTimeTracker() {
                         </div>
                         <div className="text-xs text-gray-500">
                           Streak: {student.streak} days
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.stats.ranking > 0 ? `#${student.stats.ranking.toLocaleString()}` : 'Not ranked'}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Global ranking
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

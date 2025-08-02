@@ -20,6 +20,7 @@ export const dailyProgress = pgTable("daily_progress", {
   mediumSolved: integer("medium_solved").notNull().default(0),
   hardSolved: integer("hard_solved").notNull().default(0),
   dailyIncrement: integer("daily_increment").notNull().default(0),
+  ranking: integer("ranking").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

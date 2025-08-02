@@ -5,6 +5,26 @@ interface LeetCodeResponse {
   data: {
     matchedUser: {
       username: string;
+      profile: {
+        ranking: number;
+        userAvatar: string;
+        realName: string;
+        aboutMe: string;
+        school: string;
+        websites: string[];
+        countryName: string;
+        company: string;
+        jobTitle: string;
+        skillTags: string[];
+        postViewCount: number;
+        postViewCountDiff: number;
+        reputation: number;
+        reputationDiff: number;
+        solutionCount: number;
+        solutionCountDiff: number;
+        categoryDiscussCount: number;
+        categoryDiscussCountDiff: number;
+      };
       submitStats: {
         acSubmissionNum: Array<{
           difficulty: string;
@@ -26,6 +46,26 @@ export class LeetCodeService {
     query getUserProfile($username: String!) {
       matchedUser(username: $username) {
         username
+        profile {
+          ranking
+          userAvatar
+          realName
+          aboutMe
+          school
+          websites
+          countryName
+          company
+          jobTitle
+          skillTags
+          postViewCount
+          postViewCountDiff
+          reputation
+          reputationDiff
+          solutionCount
+          solutionCountDiff
+          categoryDiscussCount
+          categoryDiscussCountDiff
+        }
         submitStats: submitStatsGlobal {
           acSubmissionNum {
             difficulty
@@ -74,6 +114,9 @@ export class LeetCodeService {
 
       const beatsStats = data.data.matchedUser.problemsSolvedBeatsStats;
       const acceptanceRate = beatsStats.reduce((acc, stat) => acc + (stat.percentage || 0), 0) / beatsStats.length;
+      
+      // Extract ranking from profile data
+      const ranking = data.data.matchedUser.profile?.ranking || 0;
 
       return {
         totalSolved,
@@ -81,7 +124,7 @@ export class LeetCodeService {
         mediumSolved,
         hardSolved,
         acceptanceRate: Math.round(acceptanceRate * 100) / 100,
-        ranking: 0, // LeetCode doesn't provide global ranking in this query
+        ranking,
       };
     } catch (error) {
       console.error(`Error fetching LeetCode data for ${username}:`, error);
@@ -109,6 +152,7 @@ export class LeetCodeService {
           mediumSolved: stats.mediumSolved,
           hardSolved: stats.hardSolved,
           dailyIncrement,
+          ranking: stats.ranking,
         });
       } else {
         // For new entries, calculate increment from yesterday
@@ -129,6 +173,7 @@ export class LeetCodeService {
           mediumSolved: stats.mediumSolved,
           hardSolved: stats.hardSolved,
           dailyIncrement,
+          ranking: stats.ranking,
         });
       }
 

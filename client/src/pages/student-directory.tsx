@@ -21,6 +21,7 @@ interface StudentWithStats extends Student {
     easySolved: number;
     mediumSolved: number;
     hardSolved: number;
+    ranking: number;
   };
   weeklyProgress: number;
   status: string;
@@ -131,6 +132,16 @@ export default function StudentDirectory() {
                       Weekly Progress
                     </span>
                     <span className="font-semibold">{student.weeklyProgress}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center">
+                      <Trophy className="h-4 w-4 mr-1 text-yellow-500" />
+                      LeetCode Rank
+                    </span>
+                    <span className="font-semibold text-xs">
+                      {student.stats.ranking > 0 ? `#${student.stats.ranking.toLocaleString()}` : 'Not ranked'}
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-xs">

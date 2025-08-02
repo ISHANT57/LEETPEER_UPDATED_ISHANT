@@ -18,6 +18,7 @@ export default function StudentTable({ data }: StudentTableProps) {
             <TableHead>Student</TableHead>
             <TableHead>LeetCode Profile</TableHead>
             <TableHead>Total Solved</TableHead>
+            <TableHead>LeetCode Ranking</TableHead>
             <TableHead>This Week</TableHead>
             <TableHead>Streak</TableHead>
             <TableHead>Status</TableHead>
@@ -49,6 +50,11 @@ export default function StudentTable({ data }: StudentTableProps) {
                 </a>
               </TableCell>
               <TableCell className="font-semibold">{student.stats.totalSolved}</TableCell>
+              <TableCell>
+                <div className="text-sm font-medium text-gray-700">
+                  {student.stats.ranking > 0 ? `#${student.stats.ranking.toLocaleString()}` : 'Not ranked'}
+                </div>
+              </TableCell>
               <TableCell>
                 <Badge 
                   variant={student.weeklyProgress >= 15 ? "default" : student.weeklyProgress >= 5 ? "secondary" : "destructive"}
