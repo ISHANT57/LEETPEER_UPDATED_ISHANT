@@ -84,6 +84,14 @@ export default function WeeklyProgressPage() {
     return "text-gray-600 bg-gray-50";
   };
 
+  // Helper function to safely display numeric values
+  const safeDisplayValue = (value: number | undefined | null): string => {
+    if (value === null || value === undefined || isNaN(value)) {
+      return "0";
+    }
+    return value.toString();
+  };
+
   // Sort data
   const sortedData = weeklyProgressData ? [...weeklyProgressData].sort((a, b) => {
     if (!a.student || !b.student) return 0;
@@ -171,7 +179,7 @@ export default function WeeklyProgressPage() {
               <CardTitle className="text-sm font-medium">Total Students</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summaryStats.totalStudents}</div>
+              <div className="text-2xl font-bold">{safeDisplayValue(summaryStats.totalStudents)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -179,7 +187,7 @@ export default function WeeklyProgressPage() {
               <CardTitle className="text-sm font-medium">Average Current Solved</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{summaryStats.averageCurrentSolved}</div>
+              <div className="text-2xl font-bold text-blue-600">{safeDisplayValue(summaryStats.averageCurrentSolved)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -187,7 +195,7 @@ export default function WeeklyProgressPage() {
               <CardTitle className="text-sm font-medium">Average New Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{summaryStats.averageNewIncrement}</div>
+              <div className="text-2xl font-bold text-green-600">{safeDisplayValue(summaryStats.averageNewIncrement)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -196,9 +204,9 @@ export default function WeeklyProgressPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
-                {summaryStats.positiveGrowthStudents}
+                {safeDisplayValue(summaryStats.positiveGrowthStudents)}
                 <span className="text-sm font-normal text-muted-foreground">
-                  /{summaryStats.totalStudents}
+                  /{safeDisplayValue(summaryStats.totalStudents)}
                 </span>
               </div>
             </CardContent>
@@ -292,38 +300,38 @@ export default function WeeklyProgressPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-center font-mono">
-                      {studentData.weeklyData.week1}
+                      {safeDisplayValue(studentData.weeklyData.week1)}
                     </TableCell>
                     <TableCell className="text-center font-mono">
-                      {studentData.weeklyData.week2}
+                      {safeDisplayValue(studentData.weeklyData.week2)}
                     </TableCell>
                     <TableCell className="text-center font-mono">
-                      {studentData.weeklyData.week3}
+                      {safeDisplayValue(studentData.weeklyData.week3)}
                     </TableCell>
                     <TableCell className="text-center font-mono">
-                      {studentData.weeklyData.week4}
+                      {safeDisplayValue(studentData.weeklyData.week4)}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary" className={getTrendColor(studentData.progressIncrements.week2Progress)}>
                         {getTrendIcon(studentData.progressIncrements.week2Progress)}
-                        <span className="ml-1">{studentData.progressIncrements.week2Progress}</span>
+                        <span className="ml-1">{safeDisplayValue(studentData.progressIncrements.week2Progress)}</span>
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary" className={getTrendColor(studentData.progressIncrements.week3Progress)}>
                         {getTrendIcon(studentData.progressIncrements.week3Progress)}
-                        <span className="ml-1">{studentData.progressIncrements.week3Progress}</span>
+                        <span className="ml-1">{safeDisplayValue(studentData.progressIncrements.week3Progress)}</span>
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary" className={getTrendColor(studentData.progressIncrements.week4Progress)}>
                         {getTrendIcon(studentData.progressIncrements.week4Progress)}
-                        <span className="ml-1">{studentData.progressIncrements.week4Progress}</span>
+                        <span className="ml-1">{safeDisplayValue(studentData.progressIncrements.week4Progress)}</span>
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline" className="font-bold text-blue-600">
-                        {studentData.realTimeData?.currentSolved || 0}
+                        {safeDisplayValue(studentData.realTimeData?.currentSolved)}
                       </Badge>
                       <div className="text-xs text-muted-foreground mt-1">
                         {studentData.realTimeData?.lastUpdated && studentData.realTimeData.lastUpdated !== 'No data' 
@@ -338,7 +346,7 @@ export default function WeeklyProgressPage() {
                                  (studentData.realTimeData?.newIncrement || 0) < 0 ? "text-red-600 bg-red-50" : "text-gray-600"}
                       >
                         {getTrendIcon(studentData.realTimeData?.newIncrement || 0)}
-                        <span className="ml-1">{studentData.realTimeData?.newIncrement || 0}</span>
+                        <span className="ml-1">{safeDisplayValue(studentData.realTimeData?.newIncrement)}</span>
                       </Badge>
                     </TableCell>
                   </TableRow>
