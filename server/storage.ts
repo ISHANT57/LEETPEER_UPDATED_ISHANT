@@ -439,6 +439,8 @@ export class PostgreSQLStorage implements IStorage {
       }));
   }
 
+
+
   // Helper methods
   async hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean> {
     const badge = await this.getBadgeByType(studentId, badgeType);

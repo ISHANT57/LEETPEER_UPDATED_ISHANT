@@ -106,12 +106,47 @@ export class WeeklyProgressImportService {
       return;
     }
 
-    // Find student by LeetCode username
-    const student = await storage.getStudentByUsername(leetcodeUsername);
+    // Find student by LeetCode username with flexible matching
+    let student = await storage.getStudentByUsername(leetcodeUsername);
+    
+    // If not found, try to find by name or partial username match
     if (!student) {
-      stats.errors.push(`Student not found: ${leetcodeUsername}`);
-      stats.skipped++;
-      return;
+      const allStudents = await storage.getAllStudents();
+      
+      // Try to find by name (case insensitive)
+      student = allStudents.find(s => 
+        s.name.toLowerCase().trim() === name.toLowerCase().trim()
+      );
+      
+      // If still not found, try partial username matching (more flexible)
+      if (!student) {
+        // Remove common suffixes/prefixes and try matching
+        const cleanUsername = leetcodeUsername.toLowerCase().replace(/[-_]/g, '');
+        student = allStudents.find(s => {
+          const cleanDbUsername = s.leetcodeUsername.toLowerCase().replace(/[-_]/g, '');
+          return cleanDbUsername.includes(cleanUsername) || 
+                 cleanUsername.includes(cleanDbUsername) ||
+                 // Check for partial matches without separators
+                 cleanDbUsername.startsWith(cleanUsername) ||
+                 cleanUsername.startsWith(cleanDbUsername);
+        });
+      }
+    }
+    
+    if (!student) {
+      // Create new student if not found
+      console.log(`Creating new student: ${name} (${leetcodeUsername})`);
+      try {
+        student = await storage.createStudent({
+          name: name.trim(),
+          leetcodeUsername: leetcodeUsername.trim(),
+          leetcodeProfileLink: profileLink.trim()
+        });
+      } catch (error) {
+        stats.errors.push(`Failed to create student ${name}: ${error}`);
+        stats.skipped++;
+        return;
+      }
     }
 
     // Parse weekly scores
@@ -168,37 +203,54 @@ export class WeeklyProgressImportService {
     return isNaN(parsed) ? 0 : parsed;
   }
 
-  // Helper method to get enhanced weekly progress data with student details
+  // Helper method to get enhanced weekly progress data with student details and real-time data
   async getEnhancedWeeklyProgressData() {
     const allProgressData = await storage.getAllWeeklyProgressData();
     const allStudents = await storage.getAllStudents();
     
-    return allProgressData.map(progressData => {
-      const student = allStudents.find(s => s.id === progressData.studentId);
-      
-      return {
-        student: student ? {
-          name: student.name,
-          leetcodeUsername: student.leetcodeUsername,
-          leetcodeProfileLink: student.leetcodeProfileLink
-        } : null,
-        weeklyData: {
-          week1: progressData.week1Score,
-          week2: progressData.week2Score,
-          week3: progressData.week3Score,
-          week4: progressData.week4Score
-        },
-        progressIncrements: {
-          week2Progress: progressData.week2Progress,
-          week3Progress: progressData.week3Progress,
-          week4Progress: progressData.week4Progress
-        },
-        summary: {
-          totalScore: progressData.totalScore,
-          averageWeeklyGrowth: progressData.averageWeeklyGrowth
-        }
-      };
-    }).filter(item => item.student !== null);
+    const enhancedData = await Promise.all(
+      allProgressData.map(async (progressData) => {
+        const student = allStudents.find(s => s.id === progressData.studentId);
+        if (!student) return null;
+        
+        // Get current real-time data from daily progress
+        const latestProgress = await storage.getLatestDailyProgress(student.id);
+        const currentSolved = latestProgress?.totalSolved || 0;
+        
+        // Calculate new increment (current - week4)
+        const newIncrement = currentSolved - (progressData.week4Score || 0);
+        
+        return {
+          student: {
+            name: student.name,
+            leetcodeUsername: student.leetcodeUsername,
+            leetcodeProfileLink: student.leetcodeProfileLink
+          },
+          weeklyData: {
+            week1: progressData.week1Score,
+            week2: progressData.week2Score,
+            week3: progressData.week3Score,
+            week4: progressData.week4Score
+          },
+          progressIncrements: {
+            week2Progress: progressData.week2Progress,
+            week3Progress: progressData.week3Progress,
+            week4Progress: progressData.week4Progress
+          },
+          realTimeData: {
+            currentSolved: currentSolved,
+            newIncrement: newIncrement,
+            lastUpdated: latestProgress?.date || 'No data'
+          },
+          summary: {
+            totalScore: progressData.totalScore,
+            averageWeeklyGrowth: progressData.averageWeeklyGrowth
+          }
+        };
+      })
+    );
+    
+    return enhancedData.filter(item => item !== null);
   }
 
   // Helper method to get specific student's weekly progress

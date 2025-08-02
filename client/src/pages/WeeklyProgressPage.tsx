@@ -27,6 +27,11 @@ interface WeeklyProgressStudent {
     week3Progress: number;
     week4Progress: number;
   };
+  realTimeData: {
+    currentSolved: number;
+    newIncrement: number;
+    lastUpdated: string;
+  };
   summary: {
     totalScore: number;
     averageWeeklyGrowth: number;
@@ -35,7 +40,7 @@ interface WeeklyProgressStudent {
 
 export default function WeeklyProgressPage() {
   const { toast } = useToast();
-  const [sortBy, setSortBy] = useState<'totalScore' | 'averageGrowth' | 'name'>('totalScore');
+  const [sortBy, setSortBy] = useState<'currentSolved' | 'newIncrement' | 'name'>('currentSolved');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch weekly progress data
@@ -87,13 +92,13 @@ export default function WeeklyProgressPage() {
     let bValue: number | string;
     
     switch (sortBy) {
-      case 'totalScore':
-        aValue = a.summary.totalScore;
-        bValue = b.summary.totalScore;
+      case 'currentSolved':
+        aValue = a.realTimeData?.currentSolved || 0;
+        bValue = b.realTimeData?.currentSolved || 0;
         break;
-      case 'averageGrowth':
-        aValue = a.summary.averageWeeklyGrowth;
-        bValue = b.summary.averageWeeklyGrowth;
+      case 'newIncrement':
+        aValue = a.realTimeData?.newIncrement || 0;
+        bValue = b.realTimeData?.newIncrement || 0;
         break;
       case 'name':
         aValue = a.student.name;
@@ -124,9 +129,9 @@ export default function WeeklyProgressPage() {
   // Calculate summary statistics
   const summaryStats = weeklyProgressData ? {
     totalStudents: weeklyProgressData.length,
-    averageTotalScore: Math.round(weeklyProgressData.reduce((sum, s) => sum + s.summary.totalScore, 0) / weeklyProgressData.length),
-    averageWeeklyGrowth: Math.round(weeklyProgressData.reduce((sum, s) => sum + s.summary.averageWeeklyGrowth, 0) / weeklyProgressData.length),
-    positiveGrowthStudents: weeklyProgressData.filter(s => s.summary.averageWeeklyGrowth > 0).length,
+    averageCurrentSolved: Math.round(weeklyProgressData.reduce((sum, s) => sum + (s.realTimeData?.currentSolved || 0), 0) / weeklyProgressData.length),
+    averageNewIncrement: Math.round(weeklyProgressData.reduce((sum, s) => sum + (s.realTimeData?.newIncrement || 0), 0) / weeklyProgressData.length),
+    positiveGrowthStudents: weeklyProgressData.filter(s => (s.realTimeData?.newIncrement || 0) > 0).length,
   } : null;
 
   if (isLoading) {
@@ -171,23 +176,23 @@ export default function WeeklyProgressPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Average Total Score</CardTitle>
+              <CardTitle className="text-sm font-medium">Average Current Solved</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{summaryStats.averageTotalScore}</div>
+              <div className="text-2xl font-bold text-blue-600">{summaryStats.averageCurrentSolved}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Average Weekly Growth</CardTitle>
+              <CardTitle className="text-sm font-medium">Average New Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{summaryStats.averageWeeklyGrowth}</div>
+              <div className="text-2xl font-bold text-green-600">{summaryStats.averageNewIncrement}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Positive Growth</CardTitle>
+              <CardTitle className="text-sm font-medium">Students with New Progress</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">
@@ -244,8 +249,8 @@ export default function WeeklyProgressPage() {
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="border rounded px-2 py-1 text-sm"
               >
-                <option value="totalScore">Total Score</option>
-                <option value="averageGrowth">Average Growth</option>
+                <option value="currentSolved">Current Solved</option>
+                <option value="newIncrement">New Progress</option>
                 <option value="name">Name</option>
               </select>
               <Button
@@ -271,8 +276,8 @@ export default function WeeklyProgressPage() {
                   <TableHead className="text-center">W2-W1</TableHead>
                   <TableHead className="text-center">W3-W2</TableHead>
                   <TableHead className="text-center">W4-W3</TableHead>
-                  <TableHead className="text-center">Total</TableHead>
-                  <TableHead className="text-center">Avg Growth</TableHead>
+                  <TableHead className="text-center">Current</TableHead>
+                  <TableHead className="text-center">New Progress</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -318,16 +323,22 @@ export default function WeeklyProgressPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="outline" className="font-bold text-blue-600">
-                        {studentData.summary.totalScore}
+                        {studentData.realTimeData?.currentSolved || 0}
                       </Badge>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {studentData.realTimeData?.lastUpdated && studentData.realTimeData.lastUpdated !== 'No data' 
+                          ? new Date(studentData.realTimeData.lastUpdated).toLocaleDateString()
+                          : 'No data'}
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge 
                         variant="outline" 
-                        className={studentData.summary.averageWeeklyGrowth > 0 ? "text-green-600" : 
-                                 studentData.summary.averageWeeklyGrowth < 0 ? "text-red-600" : "text-gray-600"}
+                        className={(studentData.realTimeData?.newIncrement || 0) > 0 ? "text-green-600 bg-green-50" : 
+                                 (studentData.realTimeData?.newIncrement || 0) < 0 ? "text-red-600 bg-red-50" : "text-gray-600"}
                       >
-                        {studentData.summary.averageWeeklyGrowth}
+                        {getTrendIcon(studentData.realTimeData?.newIncrement || 0)}
+                        <span className="ml-1">{studentData.realTimeData?.newIncrement || 0}</span>
                       </Badge>
                     </TableCell>
                   </TableRow>
