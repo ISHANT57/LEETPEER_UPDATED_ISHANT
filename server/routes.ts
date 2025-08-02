@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { leetCodeService } from "./services/leetcode";
 import { schedulerService } from "./services/scheduler";
 import { csvImportService } from "./services/csv-import";
+import { weeklyProgressImportService } from "./services/weekly-progress-import";
 import path from 'path';
 import { insertStudentSchema } from "@shared/schema";
 import studentsData from "../attached_assets/students_1753783623487.json";
@@ -282,6 +283,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('CSV update error:', error);
       res.status(500).json({ error: `Failed to update from CSV: ${error}` });
+    }
+  });
+
+  // Import weekly progress data from CSV
+  app.post("/api/import/weekly-progress", async (req, res) => {
+    try {
+      const csvFilePath = path.join(process.cwd(), 'attached_assets', 'batch of 28 leetcode_2_AUGUST_1754130719740.csv');
+      const result = await weeklyProgressImportService.importWeeklyProgressFromCSV(csvFilePath);
+      
+      res.json({
+        success: true,
+        message: `Weekly progress import completed: ${result.imported} imported, ${result.updated} updated, ${result.skipped} skipped`,
+        ...result
+      });
+    } catch (error) {
+      console.error('Weekly progress import error:', error);
+      res.status(500).json({ error: `Failed to import weekly progress data: ${error}` });
+    }
+  });
+
+  // Get all weekly progress data
+  app.get("/api/weekly-progress", async (req, res) => {
+    try {
+      const weeklyProgressData = await weeklyProgressImportService.getEnhancedWeeklyProgressData();
+      res.json(weeklyProgressData);
+    } catch (error) {
+      console.error('Weekly progress fetch error:', error);
+      res.status(500).json({ error: "Failed to fetch weekly progress data" });
+    }
+  });
+
+  // Get specific student's weekly progress
+  app.get("/api/weekly-progress/:username", async (req, res) => {
+    try {
+      const { username } = req.params;
+      const studentProgress = await weeklyProgressImportService.getStudentWeeklyProgress(username);
+      
+      if (!studentProgress) {
+        return res.status(404).json({ error: "Student not found or no weekly progress data available" });
+      }
+      
+      res.json(studentProgress);
+    } catch (error) {
+      console.error('Student weekly progress fetch error:', error);
+      res.status(500).json({ error: "Failed to fetch student weekly progress data" });
     }
   });
 

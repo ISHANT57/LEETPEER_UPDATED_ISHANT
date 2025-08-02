@@ -50,6 +50,22 @@ export const appSettings = pgTable("app_settings", {
   isAutoSyncEnabled: boolean("is_auto_sync_enabled").default(true),
 });
 
+export const weeklyProgressData = pgTable("weekly_progress_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").references(() => students.id).notNull(),
+  week1Score: integer("week1_score").default(0),
+  week2Score: integer("week2_score").default(0),
+  week3Score: integer("week3_score").default(0),
+  week4Score: integer("week4_score").default(0),
+  week2Progress: integer("week2_progress").default(0), // W2 - W1
+  week3Progress: integer("week3_progress").default(0), // W3 - W2
+  week4Progress: integer("week4_progress").default(0), // W4 - W3
+  totalScore: integer("total_score").default(0),
+  averageWeeklyGrowth: integer("average_weekly_growth").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertStudentSchema = createInsertSchema(students).omit({
   id: true,
@@ -71,6 +87,12 @@ export const insertBadgeSchema = createInsertSchema(badges).omit({
   earnedAt: true,
 });
 
+export const insertWeeklyProgressDataSchema = createInsertSchema(weeklyProgressData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type Student = typeof students.$inferSelect;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -83,6 +105,9 @@ export type InsertWeeklyTrend = z.infer<typeof insertWeeklyTrendSchema>;
 
 export type Badge = typeof badges.$inferSelect;
 export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+
+export type WeeklyProgressData = typeof weeklyProgressData.$inferSelect;
+export type InsertWeeklyProgressData = z.infer<typeof insertWeeklyProgressDataSchema>;
 
 export type AppSettings = typeof appSettings.$inferSelect;
 

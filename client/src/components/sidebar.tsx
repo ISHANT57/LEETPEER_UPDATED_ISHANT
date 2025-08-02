@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Code, Users, Trophy, Medal, Calendar, LogOut, Activity, BarChart3 } from "lucide-react";
+import { Code, Users, Trophy, Medal, Calendar, LogOut, Activity, BarChart3, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -32,6 +32,11 @@ const navigation = [
     name: "Analytics Dashboard",
     href: "/analytics",
     icon: BarChart3,
+  },
+  {
+    name: "Weekly Progress",
+    href: "/weekly-progress",
+    icon: TrendingUp,
   },
 ];
 

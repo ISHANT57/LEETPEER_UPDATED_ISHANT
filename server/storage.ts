@@ -9,6 +9,8 @@ import {
   type Badge,
   type InsertBadge,
   type AppSettings,
+  type WeeklyProgressData,
+  type InsertWeeklyProgressData,
   type LeetCodeStats,
   type StudentDashboardData,
   type AdminDashboardData,
@@ -16,7 +18,8 @@ import {
   dailyProgress,
   weeklyTrends,
   badges,
-  appSettings
+  appSettings,
+  weeklyProgressData
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -43,6 +46,13 @@ export interface IStorage {
   createWeeklyTrend(trend: InsertWeeklyTrend): Promise<WeeklyTrend>;
   getCurrentWeekTrend(studentId: string): Promise<WeeklyTrend | undefined>;
   deleteWeeklyTrend(studentId: string, weekStart: string): Promise<boolean>;
+
+  // Weekly Progress Data
+  getWeeklyProgressData(studentId: string): Promise<WeeklyProgressData | undefined>;
+  getAllWeeklyProgressData(): Promise<WeeklyProgressData[]>;
+  createWeeklyProgressData(data: InsertWeeklyProgressData): Promise<WeeklyProgressData>;
+  updateWeeklyProgressData(studentId: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined>;
+  deleteWeeklyProgressData(studentId: string): Promise<boolean>;
 
   // Badges
   getStudentBadges(studentId: string): Promise<Badge[]>;
@@ -461,6 +471,37 @@ export class PostgreSQLStorage implements IStorage {
       .orderBy(desc(dailyProgress.date))
       .limit(1);
     return result[0];
+  }
+
+  // Weekly Progress Data methods
+  async getWeeklyProgressData(studentId: string): Promise<WeeklyProgressData | undefined> {
+    const result = await db.select().from(weeklyProgressData)
+      .where(eq(weeklyProgressData.studentId, studentId))
+      .limit(1);
+    return result[0];
+  }
+
+  async getAllWeeklyProgressData(): Promise<WeeklyProgressData[]> {
+    return await db.select().from(weeklyProgressData);
+  }
+
+  async createWeeklyProgressData(data: InsertWeeklyProgressData): Promise<WeeklyProgressData> {
+    const result = await db.insert(weeklyProgressData).values(data).returning();
+    return result[0];
+  }
+
+  async updateWeeklyProgressData(studentId: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined> {
+    const result = await db.update(weeklyProgressData)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(weeklyProgressData.studentId, studentId))
+      .returning();
+    return result[0];
+  }
+
+  async deleteWeeklyProgressData(studentId: string): Promise<boolean> {
+    const result = await db.delete(weeklyProgressData)
+      .where(eq(weeklyProgressData.studentId, studentId));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   private calculateStreakFromProgress(progress: DailyProgress[]): number {

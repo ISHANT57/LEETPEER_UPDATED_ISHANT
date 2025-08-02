@@ -11,6 +11,7 @@ import StudentDirectory from "@/pages/student-directory";
 import RealTimeTracker from "@/pages/real-time-tracker";
 import BadgesPage from "@/pages/badges";
 import AnalyticsDashboard from "@/pages/analytics-dashboard";
+import WeeklyProgressPage from "@/pages/WeeklyProgressPage";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/tracker" component={RealTimeTracker} />
       <Route path="/badges" component={BadgesPage} />
       <Route path="/analytics" component={AnalyticsDashboard} />
+      <Route path="/weekly-progress" component={WeeklyProgressPage} />
       <Route component={NotFound} />
     </Switch>
   );
