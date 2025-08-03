@@ -267,11 +267,16 @@ export default function BatchDashboard() {
                   <TableRow key={student.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarFallback className="bg-primary/10">
-                            {student.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="flex flex-col items-center">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="bg-primary/10 text-xs font-bold">
+                              {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="text-xs font-medium text-gray-600 mt-1">
+                            {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                        </div>
                         <div>
                           <Link href={`/student/${student.leetcodeUsername}`}>
                             <span className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
@@ -295,11 +300,23 @@ export default function BatchDashboard() {
                     </TableCell>
                     <TableCell className="font-semibold text-lg">{student.stats.totalSolved}</TableCell>
                     <TableCell>
-                      <div className="text-sm space-y-1">
-                        <div className="flex gap-2">
-                          <Badge variant="outline" className="text-green-600">E: {student.stats.easySolved}</Badge>
-                          <Badge variant="outline" className="text-yellow-600">M: {student.stats.mediumSolved}</Badge>
-                          <Badge variant="outline" className="text-red-600">H: {student.stats.hardSolved}</Badge>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex gap-1">
+                          <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-50 border border-green-200">
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span className="text-xs font-medium text-green-700">{student.stats.easySolved}</span>
+                          </div>
+                          <div className="flex items-center gap-1 px-2 py-1 rounded bg-amber-50 border border-amber-200">
+                            <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                            <span className="text-xs font-medium text-amber-700">{student.stats.mediumSolved}</span>
+                          </div>
+                          <div className="flex items-center gap-1 px-2 py-1 rounded bg-red-50 border border-red-200">
+                            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                            <span className="text-xs font-medium text-red-700">{student.stats.hardSolved}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          E • M • H
                         </div>
                       </div>
                     </TableCell>

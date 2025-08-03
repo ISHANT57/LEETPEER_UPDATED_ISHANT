@@ -309,11 +309,16 @@ export default function UniversityDashboard() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarFallback className="bg-primary/10">
-                            {entry.student.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="flex flex-col items-center">
+                          <Avatar className="w-8 h-8">
+                            <AvatarFallback className="bg-primary/10 text-xs font-bold">
+                              {entry.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="text-xs font-medium text-gray-600 mt-1">
+                            {entry.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                        </div>
                         <div>
                           <Link href={`/student/${entry.student.leetcodeUsername}`}>
                             <span className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
