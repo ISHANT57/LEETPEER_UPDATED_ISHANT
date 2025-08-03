@@ -370,6 +370,9 @@ export class PostgreSQLStorage implements IStorage {
         date: p.date,
         count: p.dailyIncrement
       }));
+
+    // Calculate batch and university rankings
+    const rankings = await this.calculateStudentRankings(studentId, stats.totalSolved);
     
     return {
       student,
@@ -378,6 +381,10 @@ export class PostgreSQLStorage implements IStorage {
       maxStreak,
       totalActiveDays,
       weeklyRank: 1,
+      batchRank: rankings.batchRank,
+      universityRank: rankings.universityRank,
+      batchSize: rankings.batchSize,
+      universitySize: rankings.universitySize,
       badges,
       weeklyProgress: weeklyTrends.map(t => t.weeklyIncrement),
       dailyActivity: dailyProgress.map(p => ({
@@ -639,6 +646,71 @@ export class PostgreSQLStorage implements IStorage {
       }
     }
     return streak;
+  }
+
+  private async calculateStudentRankings(studentId: string, totalSolved: number): Promise<{
+    batchRank: number;
+    universityRank: number;
+    batchSize: number;
+    universitySize: number;
+  }> {
+    const student = await this.getStudent(studentId);
+    if (!student) {
+      return { batchRank: 0, universityRank: 0, batchSize: 0, universitySize: 0 };
+    }
+
+    // Get all students in the same batch
+    const batchStudents = await this.getStudentsByBatch(student.batch);
+    
+    // Get all students for university ranking
+    const allStudents = await this.getAllStudents();
+
+    // Get current progress for all batch students
+    const batchStudentsWithProgress = await Promise.all(
+      batchStudents.map(async (s) => {
+        const latestProgress = await db.select()
+          .from(dailyProgress)
+          .where(eq(dailyProgress.studentId, s.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        return {
+          student: s,
+          totalSolved: latestProgress[0]?.totalSolved || 0
+        };
+      })
+    );
+
+    // Get current progress for all students  
+    const allStudentsWithProgress = await Promise.all(
+      allStudents.map(async (s) => {
+        const latestProgress = await db.select()
+          .from(dailyProgress)
+          .where(eq(dailyProgress.studentId, s.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        return {
+          student: s,
+          totalSolved: latestProgress[0]?.totalSolved || 0
+        };
+      })
+    );
+
+    // Sort by total problems solved (descending)
+    batchStudentsWithProgress.sort((a, b) => b.totalSolved - a.totalSolved);
+    allStudentsWithProgress.sort((a, b) => b.totalSolved - a.totalSolved);
+
+    // Find rankings
+    const batchRank = batchStudentsWithProgress.findIndex(s => s.student.id === studentId) + 1;
+    const universityRank = allStudentsWithProgress.findIndex(s => s.student.id === studentId) + 1;
+
+    return {
+      batchRank: batchRank || batchStudentsWithProgress.length,
+      universityRank: universityRank || allStudentsWithProgress.length,
+      batchSize: batchStudentsWithProgress.length,
+      universitySize: allStudentsWithProgress.length
+    };
   }
 
   async calculateMaxStreak(studentId: string): Promise<number> {

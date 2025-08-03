@@ -12,6 +12,7 @@ import RecentBadges from "@/components/dashboard/recent-badges";
 import DailyActivity from "@/components/dashboard/daily-activity";
 import SubmissionStats from "@/components/dashboard/submission-stats";
 import ActivityHeatmap from "@/components/dashboard/activity-heatmap";
+import RankingOverview from "@/components/dashboard/ranking-overview";
 import type { StudentDashboardData } from "@shared/schema";
 
 export default function StudentDashboard() {
@@ -147,6 +148,8 @@ export default function StudentDashboard() {
       {/* Dashboard Content */}
       <div className="p-6 space-y-6">
         <StatsOverview data={data} />
+        
+        <RankingOverview data={data} />
         
         <SubmissionStats data={data} />
         

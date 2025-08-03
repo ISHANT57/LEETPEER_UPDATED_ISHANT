@@ -163,6 +163,10 @@ export interface StudentDashboardData {
   maxStreak: number;
   totalActiveDays: number;
   weeklyRank: number;
+  batchRank: number;
+  universityRank: number;
+  batchSize: number;
+  universitySize: number;
   badges: Badge[];
   weeklyProgress: number[];
   dailyActivity: { date: string; count: number }[];
