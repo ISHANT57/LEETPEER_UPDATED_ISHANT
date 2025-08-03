@@ -7,6 +7,9 @@ interface StatsOverviewProps {
 }
 
 export default function StatsOverview({ data }: StatsOverviewProps) {
+  const acceptanceRate = data.stats.acceptanceRate || 0;
+  const totalSubmissions = data.stats.totalSubmissions || 0;
+  
   const stats = [
     {
       label: "Total Solved",
@@ -18,15 +21,6 @@ export default function StatsOverview({ data }: StatsOverviewProps) {
       iconColor: "text-blue-500",
     },
     {
-      label: "Current Streak",
-      value: data.currentStreak,
-      change: "🔥 5+ daily",
-      changeLabel: "",
-      icon: Flame,
-      bgColor: "bg-orange-50",
-      iconColor: "text-orange-500",
-    },
-    {
       label: "LeetCode Rank",
       value: data.stats.ranking > 0 ? `#${data.stats.ranking.toLocaleString()}` : 'Not ranked',
       change: "Global",
@@ -34,6 +28,15 @@ export default function StatsOverview({ data }: StatsOverviewProps) {
       icon: Trophy,
       bgColor: "bg-yellow-50",
       iconColor: "text-yellow-500",
+    },
+    {
+      label: "Acceptance Rate",
+      value: `${(acceptanceRate / 100).toFixed(1)}%`,
+      change: totalSubmissions > 0 ? `${totalSubmissions}` : "0",
+      changeLabel: "submissions",
+      icon: CheckCircle,
+      bgColor: "bg-green-50",
+      iconColor: "text-green-500",
     },
     {
       label: "Badges Earned",

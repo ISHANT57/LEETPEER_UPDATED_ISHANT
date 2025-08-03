@@ -21,6 +21,10 @@ export const dailyProgress = pgTable("daily_progress", {
   hardSolved: integer("hard_solved").notNull().default(0),
   dailyIncrement: integer("daily_increment").notNull().default(0),
   ranking: integer("ranking").default(0),
+  acceptanceRate: integer("acceptance_rate").default(0), // Stored as percentage * 100
+  totalSubmissions: integer("total_submissions").default(0),
+  totalAccepted: integer("total_accepted").default(0),
+  languageStats: jsonb("language_stats").default({}), // Store language-wise submission counts
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -120,6 +124,9 @@ export interface LeetCodeStats {
   hardSolved: number;
   acceptanceRate: number;
   ranking: number;
+  totalSubmissions: number;
+  totalAccepted: number;
+  languageStats: Record<string, number>;
 }
 
 export interface StudentDashboardData {

@@ -10,6 +10,7 @@ import DifficultyBreakdown from "@/components/dashboard/difficulty-breakdown";
 import WeeklyProgress from "@/components/dashboard/weekly-progress";
 import RecentBadges from "@/components/dashboard/recent-badges";
 import DailyActivity from "@/components/dashboard/daily-activity";
+import SubmissionStats from "@/components/dashboard/submission-stats";
 import type { StudentDashboardData } from "@shared/schema";
 
 export default function StudentDashboard() {
@@ -145,6 +146,8 @@ export default function StudentDashboard() {
       {/* Dashboard Content */}
       <div className="p-6 space-y-6">
         <StatsOverview data={data} />
+        
+        <SubmissionStats data={data} />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DifficultyBreakdown data={data} />

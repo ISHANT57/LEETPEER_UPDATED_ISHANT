@@ -29,8 +29,19 @@ interface LeetCodeResponse {
         acSubmissionNum: Array<{
           difficulty: string;
           count: number;
+          submissions: number;
+        }>;
+        totalSubmissionNum: Array<{
+          difficulty: string;
+          count: number;
+          submissions: number;
         }>;
       };
+      languageProblemCount: Array<{
+        languageName: string;
+        problemsSolved: number;
+      }>;
+      submissionCalendar: string;
       problemsSolvedBeatsStats: Array<{
         difficulty: string;
         percentage: number;
@@ -70,8 +81,19 @@ export class LeetCodeService {
           acSubmissionNum {
             difficulty
             count
+            submissions
+          }
+          totalSubmissionNum {
+            difficulty
+            count
+            submissions
           }
         }
+        languageProblemCount {
+          languageName
+          problemsSolved
+        }
+        submissionCalendar
         problemsSolvedBeatsStats {
           difficulty
           percentage
@@ -106,17 +128,28 @@ export class LeetCodeService {
         return null;
       }
 
-      const submitStats = data.data.matchedUser.submitStats.acSubmissionNum;
-      const totalSolved = submitStats.find(stat => stat.difficulty === "All")?.count || 0;
-      const easySolved = submitStats.find(stat => stat.difficulty === "Easy")?.count || 0;
-      const mediumSolved = submitStats.find(stat => stat.difficulty === "Medium")?.count || 0;
-      const hardSolved = submitStats.find(stat => stat.difficulty === "Hard")?.count || 0;
+      const acSubmissions = data.data.matchedUser.submitStats.acSubmissionNum;
+      const totalSubmissions = data.data.matchedUser.submitStats.totalSubmissionNum;
+      const languageStats = data.data.matchedUser.languageProblemCount || [];
+      
+      const totalSolved = acSubmissions.find(stat => stat.difficulty === "All")?.count || 0;
+      const easySolved = acSubmissions.find(stat => stat.difficulty === "Easy")?.count || 0;
+      const mediumSolved = acSubmissions.find(stat => stat.difficulty === "Medium")?.count || 0;
+      const hardSolved = acSubmissions.find(stat => stat.difficulty === "Hard")?.count || 0;
 
-      const beatsStats = data.data.matchedUser.problemsSolvedBeatsStats;
-      const acceptanceRate = beatsStats.reduce((acc, stat) => acc + (stat.percentage || 0), 0) / beatsStats.length;
+      // Calculate acceptance rate from total submissions vs accepted submissions
+      const totalSubmissionCount = totalSubmissions.find(stat => stat.difficulty === "All")?.submissions || 0;
+      const totalAcceptedCount = acSubmissions.find(stat => stat.difficulty === "All")?.submissions || 0;
+      const acceptanceRate = totalSubmissionCount > 0 ? (totalAcceptedCount / totalSubmissionCount) * 100 : 0;
       
       // Extract ranking from profile data
       const ranking = data.data.matchedUser.profile?.ranking || 0;
+
+      // Process language statistics
+      const languageStatsObj = languageStats.reduce((acc: any, lang) => {
+        acc[lang.languageName] = lang.problemsSolved;
+        return acc;
+      }, {});
 
       return {
         totalSolved,
@@ -125,6 +158,9 @@ export class LeetCodeService {
         hardSolved,
         acceptanceRate: Math.round(acceptanceRate * 100) / 100,
         ranking,
+        totalSubmissions: totalSubmissionCount,
+        totalAccepted: totalAcceptedCount,
+        languageStats: languageStatsObj,
       };
     } catch (error) {
       console.error(`Error fetching LeetCode data for ${username}:`, error);
@@ -153,6 +189,10 @@ export class LeetCodeService {
           hardSolved: stats.hardSolved,
           dailyIncrement,
           ranking: stats.ranking,
+          acceptanceRate: Math.round(stats.acceptanceRate * 100), // Store as integer percentage * 100
+          totalSubmissions: stats.totalSubmissions,
+          totalAccepted: stats.totalAccepted,
+          languageStats: stats.languageStats,
         });
       } else {
         // For new entries, calculate increment from yesterday
@@ -174,6 +214,10 @@ export class LeetCodeService {
           hardSolved: stats.hardSolved,
           dailyIncrement,
           ranking: stats.ranking,
+          acceptanceRate: Math.round(stats.acceptanceRate * 100), // Store as integer percentage * 100
+          totalSubmissions: stats.totalSubmissions,
+          totalAccepted: stats.totalAccepted,
+          languageStats: stats.languageStats,
         });
       }
 

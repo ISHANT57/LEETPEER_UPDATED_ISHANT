@@ -25,6 +25,9 @@ interface StudentRanking {
     mediumSolved: number;
     hardSolved: number;
     ranking: number;
+    acceptanceRate: number;
+    totalSubmissions: number;
+    totalAccepted: number;
   };
   weeklyProgress: number;
   streak: number;
@@ -241,6 +244,9 @@ export default function RealTimeTracker() {
                       LeetCode Ranking
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Acceptance Rate
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Difficulty Breakdown
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -293,6 +299,14 @@ export default function RealTimeTracker() {
                         </div>
                         <div className="text-xs text-gray-500">
                           Global ranking
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {((student.stats.acceptanceRate || 0) / 100).toFixed(1)}%
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {student.stats.totalSubmissions || 0} submissions
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
