@@ -72,6 +72,8 @@ export interface IStorage {
   // Helper methods
   hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean>;
   calculateStreak(studentId: string): Promise<number>;
+  calculateMaxStreak(studentId: string): Promise<number>;
+  calculateTotalActiveDays(studentId: string): Promise<number>;
   getWeeklyTrend(studentId: string, weekStart: string): Promise<WeeklyTrend | undefined>;
   getLatestDailyProgress(studentId: string): Promise<DailyProgress | undefined>;
 }
@@ -336,14 +338,23 @@ export class PostgreSQLStorage implements IStorage {
       languageStats: {} as Record<string, number>
     };
 
+    // Get yearly data for heatmap (365 days)
+    const yearlyProgress = await this.getStudentDailyProgress(studentId, 365);
+    
     return {
       student,
       stats,
       currentStreak: this.calculateStreakFromProgress(dailyProgress),
+      maxStreak: await this.calculateMaxStreak(studentId),
+      totalActiveDays: await this.calculateTotalActiveDays(studentId),
       weeklyRank: 1,
       badges,
       weeklyProgress: weeklyTrends.map(t => t.weeklyIncrement),
       dailyActivity: dailyProgress.map(p => ({
+        date: p.date,
+        count: p.dailyIncrement
+      })),
+      yearlyActivity: yearlyProgress.map(p => ({
         date: p.date,
         count: p.dailyIncrement
       }))
@@ -416,11 +427,16 @@ export class PostgreSQLStorage implements IStorage {
           }
         }
 
+        const maxStreak = await this.calculateMaxStreak(student.id);
+        const totalActiveDays = await this.calculateTotalActiveDays(student.id);
+
         return {
           ...student,
           stats,
           weeklyProgress: Math.max(0, currentWeeklyProgress),
           streak,
+          maxStreak,
+          totalActiveDays,
           status
         };
       })
@@ -429,6 +445,10 @@ export class PostgreSQLStorage implements IStorage {
     const activeStudents = studentsWithStats.filter(s => s.status !== 'inactive').length;
     const avgProblems = studentsWithStats.reduce((sum, s) => sum + s.stats.totalSolved, 0) / totalStudents;
     const underperforming = studentsWithStats.filter(s => s.stats.totalSolved < avgProblems * 0.7).length;
+    
+    // Calculate streak statistics
+    const maxStreakOverall = Math.max(...studentsWithStats.map(s => s.maxStreak), 0);
+    const avgMaxStreak = studentsWithStats.reduce((sum, s) => sum + s.maxStreak, 0) / totalStudents;
 
     const leaderboard = studentsWithStats
       .sort((a, b) => b.stats.totalSolved - a.stats.totalSolved)
@@ -450,6 +470,8 @@ export class PostgreSQLStorage implements IStorage {
       activeStudents,
       avgProblems,
       underperforming,
+      maxStreakOverall,
+      avgMaxStreak,
       students: studentsWithStats,
       leaderboard
     };
@@ -559,6 +581,44 @@ export class PostgreSQLStorage implements IStorage {
       }
     }
     return streak;
+  }
+
+  async calculateMaxStreak(studentId: string): Promise<number> {
+    // Get all daily progress for the student, sorted by date
+    const allProgress = await db.select()
+      .from(dailyProgress)
+      .where(eq(dailyProgress.studentId, studentId))
+      .orderBy(desc(dailyProgress.date));
+
+    if (allProgress.length === 0) return 0;
+
+    let maxStreak = 0;
+    let currentStreak = 0;
+
+    // Reverse to go from oldest to newest
+    const reversedProgress = allProgress.reverse();
+    
+    for (const progress of reversedProgress) {
+      if (progress.dailyIncrement > 0) {
+        currentStreak++;
+        maxStreak = Math.max(maxStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+
+    return maxStreak;
+  }
+
+  async calculateTotalActiveDays(studentId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(dailyProgress)
+      .where(and(
+        eq(dailyProgress.studentId, studentId),
+        sql`${dailyProgress.dailyIncrement} > 0`
+      ));
+    
+    return result[0]?.count || 0;
   }
 }
 

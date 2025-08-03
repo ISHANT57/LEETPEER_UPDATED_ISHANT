@@ -39,6 +39,24 @@ export default function StatsOverview({ data }: StatsOverviewProps) {
       iconColor: "text-green-500",
     },
     {
+      label: "Max Streak",
+      value: `${data.maxStreak} days`,
+      change: `${data.currentStreak}`,
+      changeLabel: "current",
+      icon: Flame,
+      bgColor: "bg-orange-50",
+      iconColor: "text-orange-500",
+    },
+    {
+      label: "Active Days",
+      value: data.totalActiveDays,
+      change: `${((data.totalActiveDays / 365) * 100).toFixed(1)}%`,
+      changeLabel: "yearly rate",
+      icon: Trophy,
+      bgColor: "bg-emerald-50",
+      iconColor: "text-emerald-500",
+    },
+    {
       label: "Badges Earned",
       value: data.badges.length,
       change: "+1",
@@ -50,7 +68,7 @@ export default function StatsOverview({ data }: StatsOverviewProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (

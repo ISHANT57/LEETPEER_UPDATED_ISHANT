@@ -133,10 +133,13 @@ export interface StudentDashboardData {
   student: Student;
   stats: LeetCodeStats;
   currentStreak: number;
+  maxStreak: number;
+  totalActiveDays: number;
   weeklyRank: number;
   badges: Badge[];
   weeklyProgress: number[];
   dailyActivity: { date: string; count: number }[];
+  yearlyActivity: { date: string; count: number }[];
 }
 
 export interface AdminDashboardData {
@@ -144,10 +147,14 @@ export interface AdminDashboardData {
   activeStudents: number;
   avgProblems: number;
   underperforming: number;
+  maxStreakOverall: number;
+  avgMaxStreak: number;
   students: (Student & {
     stats: LeetCodeStats;
     weeklyProgress: number;
     streak: number;
+    maxStreak: number;
+    totalActiveDays: number;
     status: string;
   })[];
   leaderboard: {

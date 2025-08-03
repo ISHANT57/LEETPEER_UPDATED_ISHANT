@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, TrendingUp, Calculator, AlertTriangle } from "lucide-react";
+import { Users, TrendingUp, Calculator, AlertTriangle, Flame, Target } from "lucide-react";
 import type { AdminDashboardData } from "@shared/schema";
 
 interface BatchStatsProps {
@@ -36,10 +36,24 @@ export default function BatchStats({ data }: BatchStatsProps) {
       bgColor: "bg-red-50",
       iconColor: "text-red-400",
     },
+    {
+      label: "Max Streak Overall",
+      value: `${data.maxStreakOverall} days`,
+      icon: Flame,
+      bgColor: "bg-orange-50",
+      iconColor: "text-orange-400",
+    },
+    {
+      label: "Avg Max Streak",
+      value: `${Math.round(data.avgMaxStreak)} days`,
+      icon: Target,
+      bgColor: "bg-purple-50",
+      iconColor: "text-purple-400",
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (

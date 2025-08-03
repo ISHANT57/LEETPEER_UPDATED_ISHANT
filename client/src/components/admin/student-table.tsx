@@ -20,7 +20,9 @@ export default function StudentTable({ data }: StudentTableProps) {
             <TableHead>Total Solved</TableHead>
             <TableHead>LeetCode Ranking</TableHead>
             <TableHead>This Week</TableHead>
-            <TableHead>Streak</TableHead>
+            <TableHead>Current Streak</TableHead>
+            <TableHead>Max Streak</TableHead>
+            <TableHead>Active Days</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -74,6 +76,19 @@ export default function StudentTable({ data }: StudentTableProps) {
                     {student.streak}
                   </span>
                 </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center space-x-1">
+                  <Flame className={student.maxStreak > 0 ? "text-red-500" : "text-gray-400"} size={16} />
+                  <span className={student.maxStreak > 0 ? "font-medium text-red-600" : "text-slate-500"}>
+                    {student.maxStreak}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <span className="font-medium text-emerald-600">
+                  {student.totalActiveDays}
+                </span>
               </TableCell>
               <TableCell>
                 <Badge 

@@ -104,7 +104,16 @@ Preferred communication style: Simple, everyday language.
 - **Type Safety**: End-to-end TypeScript with shared schema definitions
 - **Error Handling**: Comprehensive error boundaries and API error handling
 
-### Recent Updates (July 30, 2025)
+### Recent Updates (August 3, 2025)
+- ✅ Added GitHub-style Activity Heatmap showing 365-day submission calendar
+- ✅ Implemented Total Active Days calculation (days with at least 1 problem solved)
+- ✅ Added Maximum Streak tracking for all students (longest consecutive daily streak)
+- ✅ Enhanced Admin Dashboard with batch-wide streak statistics
+- ✅ Updated Student Dashboard with new streak and activity metrics
+- ✅ Improved stats overview with 5-column responsive layout
+- ✅ Added max streak and active days columns to admin student table
+
+### Previous Updates (July 30, 2025)
 - ✅ Fixed LeetCode usernames for 11 students who were previously failing sync
 - ✅ Created real-time tracker page with complete rankings for all 142 students
 - ✅ Added individual student dashboard URLs (/student/username)

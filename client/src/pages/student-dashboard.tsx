@@ -11,6 +11,7 @@ import WeeklyProgress from "@/components/dashboard/weekly-progress";
 import RecentBadges from "@/components/dashboard/recent-badges";
 import DailyActivity from "@/components/dashboard/daily-activity";
 import SubmissionStats from "@/components/dashboard/submission-stats";
+import ActivityHeatmap from "@/components/dashboard/activity-heatmap";
 import type { StudentDashboardData } from "@shared/schema";
 
 export default function StudentDashboard() {
@@ -154,6 +155,7 @@ export default function StudentDashboard() {
           <WeeklyProgress data={data} />
         </div>
         
+        <ActivityHeatmap data={data} />
         <RecentBadges data={data} />
         <DailyActivity data={data} />
       </div>
