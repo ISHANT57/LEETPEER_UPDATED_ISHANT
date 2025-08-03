@@ -34,6 +34,24 @@ export default function AdminDashboard() {
     },
   });
 
+  const syncProfilePhotosMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/sync/profile-photos'),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/admin'] });
+      toast({
+        title: "Profile photos synced",
+        description: `Updated ${data.success} profile photos successfully.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Sync failed",
+        description: "Failed to sync profile photos. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleExportCSV = () => {
     window.open('/api/export/csv', '_blank');
   };
@@ -119,6 +137,15 @@ export default function AdminDashboard() {
             >
               <Download className="mr-2" size={16} />
               Export CSV
+            </Button>
+            <Button 
+              onClick={() => syncProfilePhotosMutation.mutate()}
+              disabled={syncProfilePhotosMutation.isPending}
+              variant="outline"
+              className="text-purple-600 border-purple-600 hover:bg-purple-50"
+            >
+              <RefreshCw className={`mr-2 ${syncProfilePhotosMutation.isPending ? 'animate-spin' : ''}`} size={16} />
+              {syncProfilePhotosMutation.isPending ? 'Syncing Photos...' : 'Sync Photos'}
             </Button>
             <Button 
               onClick={() => syncMutation.mutate()}

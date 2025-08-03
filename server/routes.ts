@@ -331,6 +331,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sync profile photos from LeetCode
+  app.post("/api/sync/profile-photos", async (req, res) => {
+    try {
+      const result = await leetCodeService.syncAllProfilePhotos();
+      res.json({ 
+        message: `Profile photos sync completed`, 
+        success: result.success, 
+        failed: result.failed 
+      });
+    } catch (error) {
+      console.error('Error syncing profile photos:', error);
+      res.status(500).json({ error: "Failed to sync profile photos" });
+    }
+  });
+
   // Export CSV
   app.get("/api/export/csv", async (req, res) => {
     try {

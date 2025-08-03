@@ -3,7 +3,7 @@ import { Link } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState } from 'react';
 import { Search, Trophy, TrendingUp } from 'lucide-react';
 
@@ -12,6 +12,7 @@ interface Student {
   name: string;
   leetcodeUsername: string;
   leetcodeProfileLink: string;
+  profilePhoto?: string;
   createdAt: string;
 }
 
@@ -100,6 +101,9 @@ export default function StudentDirectory() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
                     <Avatar>
+                      {student.profilePhoto && (
+                        <AvatarImage src={student.profilePhoto} alt={student.name} />
+                      )}
                       <AvatarFallback className="bg-primary/10">
                         {student.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                       </AvatarFallback>

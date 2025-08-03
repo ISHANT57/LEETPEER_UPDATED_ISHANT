@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { UniversityDashboardData } from '@shared/schema';
@@ -311,6 +311,9 @@ export default function UniversityDashboard() {
                       <div className="flex items-center space-x-3">
                         <div className="flex flex-col items-center">
                           <Avatar className="w-8 h-8">
+                            {entry.student.profilePhoto && (
+                              <AvatarImage src={entry.student.profilePhoto} alt={entry.student.name} />
+                            )}
                             <AvatarFallback className="bg-primary/10 text-xs font-bold">
                               {entry.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>

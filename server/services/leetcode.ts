@@ -8,6 +8,7 @@ interface EnhancedLeetCodeStats extends LeetCodeStats {
   maxStreak: number;
   totalActiveDays: number;
   yearlyActivity: Array<{ date: string; count: number }>;
+  profilePhoto?: string; // LeetCode profile avatar URL
 }
 
 interface LeetCodeResponse {
@@ -284,8 +285,9 @@ export class LeetCodeService {
       const totalAcceptedCount = acSubmissions.find(stat => stat.difficulty === "All")?.submissions || 0;
       const acceptanceRate = totalSubmissionCount > 0 ? (totalAcceptedCount / totalSubmissionCount) * 100 : 0;
       
-      // Extract ranking from profile data
+      // Extract ranking and profile photo from profile data
       const ranking = data.data.matchedUser.profile?.ranking || 0;
+      const profilePhoto = data.data.matchedUser.profile?.userAvatar || undefined;
 
       // Process language statistics
       const languageStatsObj = languageStats.reduce((acc: any, lang) => {
@@ -312,6 +314,7 @@ export class LeetCodeService {
         maxStreak,
         totalActiveDays,
         yearlyActivity,
+        profilePhoto,
       };
     } catch (error) {
       console.error(`Error fetching LeetCode data for ${username}:`, error);
@@ -378,6 +381,11 @@ export class LeetCodeService {
       // Check for badge achievements
       await this.checkBadgeAchievements(studentId, stats, dailyIncrement);
 
+      // Update student profile photo if available
+      if (stats.profilePhoto && stats.profilePhoto !== student.profilePhoto) {
+        await storage.updateStudent(studentId, { profilePhoto: stats.profilePhoto });
+      }
+
       // Store or update real-time data
       const existingRealTimeData = await storage.getLeetcodeRealTimeData(studentId);
       const realTimeDataToStore = {
@@ -415,6 +423,30 @@ export class LeetCodeService {
     await storage.updateAppSettings({
       lastSyncTime: new Date(),
     });
+
+    return { success, failed };
+  }
+
+  async syncAllProfilePhotos(): Promise<{ success: number; failed: number }> {
+    const students = await storage.getAllStudents();
+    const results = await Promise.allSettled(
+      students.map(async (student) => {
+        try {
+          const stats = await this.fetchUserStats(student.leetcodeUsername);
+          if (stats?.profilePhoto && stats.profilePhoto !== student.profilePhoto) {
+            await storage.updateStudent(student.id, { profilePhoto: stats.profilePhoto });
+            return true;
+          }
+          return true; // No update needed, but not a failure
+        } catch (error) {
+          console.error(`Error updating profile photo for ${student.leetcodeUsername}:`, error);
+          return false;
+        }
+      })
+    );
+
+    const success = results.filter(result => result.status === 'fulfilled' && result.value).length;
+    const failed = results.length - success;
 
     return { success, failed };
   }

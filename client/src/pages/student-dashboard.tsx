@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { Link } from "wouter";
 import { RefreshCw, ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import StatsOverview from "@/components/dashboard/stats-overview";
@@ -113,6 +114,14 @@ export default function StudentDashboard() {
                 All Students
               </Button>
             </Link>
+            <Avatar className="h-12 w-12">
+              {data?.student?.profilePhoto && (
+                <AvatarImage src={data.student.profilePhoto} alt={data.student.name} />
+              )}
+              <AvatarFallback className="bg-primary/10">
+                {data?.student?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || username?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
                 {data?.student?.name || username}

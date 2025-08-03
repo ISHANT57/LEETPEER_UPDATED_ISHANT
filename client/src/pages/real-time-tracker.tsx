@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 import { RefreshCw, Search, Trophy, TrendingUp, ExternalLink, Users, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ interface StudentRanking {
     name: string;
     leetcodeUsername: string;
     leetcodeProfileLink: string;
+    profilePhoto?: string;
   };
   stats: {
     totalSolved: number;
@@ -272,6 +273,9 @@ export default function RealTimeTracker() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <Avatar className="h-10 w-10">
+                            {student.student.profilePhoto && (
+                              <AvatarImage src={student.student.profilePhoto} alt={student.student.name} />
+                            )}
                             <AvatarFallback className="bg-blue-100">
                               {student.student.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                             </AvatarFallback>
