@@ -16,6 +16,8 @@ import {
   type LeetCodeStats,
   type StudentDashboardData,
   type AdminDashboardData,
+  type BatchDashboardData,
+  type UniversityDashboardData,
   students,
   dailyProgress,
   weeklyTrends,
@@ -76,7 +78,15 @@ export interface IStorage {
   // Dashboard data
   getStudentDashboard(studentId: string): Promise<StudentDashboardData | undefined>;
   getAdminDashboard(): Promise<AdminDashboardData>;
+  getBatchDashboard(batch: string): Promise<BatchDashboardData>;
+  getUniversityDashboard(): Promise<UniversityDashboardData>;
   getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
+  getBatchLeaderboard(batch: string): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
+  getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; totalSolved: number; batch: string }>>;
+
+  // Batch-specific methods
+  getStudentsByBatch(batch: string): Promise<Student[]>;
+  getAllStudentsWithBatch(): Promise<Student[]>;
 
   // Helper methods
   hasStudentEarnedBadge(studentId: string, badgeType: string): Promise<boolean>;
@@ -478,6 +488,7 @@ export class PostgreSQLStorage implements IStorage {
           name: student.name,
           leetcodeUsername: student.leetcodeUsername,
           leetcodeProfileLink: student.leetcodeProfileLink,
+          batch: student.batch,
           createdAt: student.createdAt
         },
         weeklyScore: student.stats.totalSolved
@@ -664,6 +675,222 @@ export class PostgreSQLStorage implements IStorage {
       ));
     
     return result[0]?.count || 0;
+  }
+
+  // Batch-specific methods
+  async getStudentsByBatch(batch: string): Promise<Student[]> {
+    return await db.select().from(students).where(eq(students.batch, batch));
+  }
+
+  async getAllStudentsWithBatch(): Promise<Student[]> {
+    return await db.select().from(students);
+  }
+
+  async getBatchDashboard(batch: string): Promise<BatchDashboardData> {
+    const batchStudents = await this.getStudentsByBatch(batch);
+    const totalStudents = batchStudents.length;
+
+    if (totalStudents === 0) {
+      return {
+        batch,
+        totalStudents: 0,
+        activeStudents: 0,
+        avgProblems: 0,
+        underperforming: 0,
+        maxStreakOverall: 0,
+        avgMaxStreak: 0,
+        students: [],
+        leaderboard: []
+      };
+    }
+
+    const studentsWithStats = await Promise.all(
+      batchStudents.map(async (student) => {
+        const latestProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        const latestProgress = latestProgressResult[0];
+        
+        const stats: LeetCodeStats = {
+          totalSolved: latestProgress?.totalSolved || 0,
+          easySolved: latestProgress?.easySolved || 0,
+          mediumSolved: latestProgress?.mediumSolved || 0,
+          hardSolved: latestProgress?.hardSolved || 0,
+          acceptanceRate: latestProgress?.acceptanceRate || 0,
+          ranking: latestProgress?.ranking || 0,
+          totalSubmissions: latestProgress?.totalSubmissions || 0,
+          totalAccepted: latestProgress?.totalAccepted || 0,
+          languageStats: latestProgress?.languageStats as Record<string, number> || {}
+        };
+
+        // Calculate weekly progress
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
+        
+        const weeklyProgressResult = await db.select().from(dailyProgress)
+          .where(and(
+            eq(dailyProgress.studentId, student.id),
+            sql`${dailyProgress.date} >= ${oneWeekAgoStr}`
+          ))
+          .orderBy(dailyProgress.date);
+        
+        const currentWeeklyProgress = weeklyProgressResult.length > 0 
+          ? (latestProgress?.totalSolved || 0) - (weeklyProgressResult[0]?.totalSolved || 0)
+          : 0;
+
+        // Recent progress for streak calculation
+        const recentProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(30);
+
+        const status = this.calculateStatus(stats.totalSolved, currentWeeklyProgress);
+
+        // Get real-time data if available, fallback to calculated values
+        const realTimeData = await this.getLeetcodeRealTimeData(student.id);
+        const maxStreak = realTimeData?.maxStreak ?? await this.calculateMaxStreak(student.id);
+        const totalActiveDays = realTimeData?.totalActiveDays ?? await this.calculateTotalActiveDays(student.id);
+        const currentStreak = realTimeData?.currentStreak ?? this.calculateStreakFromProgress(recentProgressResult);
+
+        return {
+          ...student,
+          stats,
+          weeklyProgress: Math.max(0, currentWeeklyProgress),
+          streak: currentStreak,
+          maxStreak,
+          totalActiveDays,
+          status
+        };
+      })
+    );
+
+    const activeStudents = studentsWithStats.filter(s => s.status !== 'inactive').length;
+    const avgProblems = studentsWithStats.reduce((sum, s) => sum + s.stats.totalSolved, 0) / totalStudents;
+    const underperforming = studentsWithStats.filter(s => s.stats.totalSolved < avgProblems * 0.7).length;
+    
+    // Calculate streak statistics
+    const maxStreakOverall = Math.max(...studentsWithStats.map(s => s.maxStreak), 0);
+    const avgMaxStreak = studentsWithStats.reduce((sum, s) => sum + s.maxStreak, 0) / totalStudents;
+
+    const leaderboard = studentsWithStats
+      .sort((a, b) => b.stats.totalSolved - a.stats.totalSolved)
+      .slice(0, 10)
+      .map((student, index) => ({
+        rank: index + 1,
+        student: {
+          id: student.id,
+          name: student.name,
+          leetcodeUsername: student.leetcodeUsername,
+          leetcodeProfileLink: student.leetcodeProfileLink,
+          batch: student.batch,
+          createdAt: student.createdAt
+        },
+        weeklyScore: student.stats.totalSolved
+      }));
+
+    return {
+      batch,
+      totalStudents,
+      activeStudents,
+      avgProblems,
+      underperforming,
+      maxStreakOverall,
+      avgMaxStreak,
+      students: studentsWithStats,
+      leaderboard
+    };
+  }
+
+  async getBatchLeaderboard(batch: string): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>> {
+    const batchStudents = await this.getStudentsByBatch(batch);
+    
+    const studentsWithScores = await Promise.all(
+      batchStudents.map(async (student) => {
+        const latestProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        const latestProgress = latestProgressResult[0];
+        
+        return {
+          student,
+          weeklyScore: latestProgress?.totalSolved || 0
+        };
+      })
+    );
+
+    return studentsWithScores
+      .sort((a, b) => b.weeklyScore - a.weeklyScore)
+      .map((item, index) => ({
+        rank: index + 1,
+        ...item
+      }));
+  }
+
+  async getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; totalSolved: number; batch: string }>> {
+    const allStudents = await this.getAllStudentsWithBatch();
+    
+    const studentsWithScores = await Promise.all(
+      allStudents.map(async (student) => {
+        const latestProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
+        
+        const latestProgress = latestProgressResult[0];
+        
+        return {
+          student,
+          totalSolved: latestProgress?.totalSolved || 0,
+          batch: student.batch
+        };
+      })
+    );
+
+    return studentsWithScores
+      .sort((a, b) => b.totalSolved - a.totalSolved)
+      .map((item, index) => ({
+        rank: index + 1,
+        ...item
+      }));
+  }
+
+  async getUniversityDashboard(): Promise<UniversityDashboardData> {
+    const [batch2027Data, batch2028Data] = await Promise.all([
+      this.getBatchDashboard("2027"),
+      this.getBatchDashboard("2028")
+    ]);
+
+    const universityLeaderboard = await this.getUniversityLeaderboard();
+
+    const combined = {
+      totalStudents: batch2027Data.totalStudents + batch2028Data.totalStudents,
+      activeStudents: batch2027Data.activeStudents + batch2028Data.activeStudents,
+      avgProblems: (batch2027Data.avgProblems * batch2027Data.totalStudents + batch2028Data.avgProblems * batch2028Data.totalStudents) / 
+                   (batch2027Data.totalStudents + batch2028Data.totalStudents) || 0,
+      underperforming: batch2027Data.underperforming + batch2028Data.underperforming,
+      maxStreakOverall: Math.max(batch2027Data.maxStreakOverall, batch2028Data.maxStreakOverall),
+      avgMaxStreak: (batch2027Data.avgMaxStreak * batch2027Data.totalStudents + batch2028Data.avgMaxStreak * batch2028Data.totalStudents) / 
+                    (batch2027Data.totalStudents + batch2028Data.totalStudents) || 0,
+      universityLeaderboard: universityLeaderboard.slice(0, 20) // Top 20 university-wide
+    };
+
+    return {
+      batch2027: batch2027Data,
+      batch2028: batch2028Data,
+      combined
+    };
+  }
+
+  private calculateStatus(totalSolved: number, weeklyProgress: number): string {
+    if (totalSolved >= 100 && weeklyProgress >= 15) return 'Excellent';
+    if (totalSolved >= 50 && weeklyProgress >= 10) return 'Good';
+    if (weeklyProgress >= 5) return 'Active';
+    return 'Underperforming';
   }
 }
 

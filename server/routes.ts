@@ -8,6 +8,7 @@ import { weeklyProgressImportService } from "./services/weekly-progress-import";
 import path from 'path';
 import { insertStudentSchema } from "@shared/schema";
 import studentsData from "../attached_assets/students_1753783623487.json";
+import batch2027Data from "../attached_assets/batch_2027_students.json";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize students from JSON file
@@ -22,6 +23,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             name: studentData.name,
             leetcodeUsername: studentData.leetcodeUsername,
             leetcodeProfileLink: studentData.leetcodeProfileLink,
+            batch: "2028", // Explicitly set batch for existing data
           });
           importedCount++;
         }
@@ -34,6 +36,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error importing students:', error);
       res.status(500).json({ error: "Failed to import students" });
+    }
+  });
+
+  // Import Batch 2027 students
+  app.post("/api/init-batch-2027", async (req, res) => {
+    try {
+      let importedCount = 0;
+      
+      for (const studentData of batch2027Data) {
+        const existing = await storage.getStudentByUsername(studentData.leetcodeUsername);
+        if (!existing) {
+          await storage.createStudent({
+            name: studentData.name,
+            leetcodeUsername: studentData.leetcodeUsername,
+            leetcodeProfileLink: studentData.leetcodeProfileLink,
+            batch: "2027",
+          });
+          importedCount++;
+        }
+      }
+      
+      res.json({ 
+        message: `Imported ${importedCount} new Batch 2027 students`,
+        total: batch2027Data.length 
+      });
+    } catch (error) {
+      console.error('Error importing Batch 2027 students:', error);
+      res.status(500).json({ error: "Failed to import Batch 2027 students" });
     }
   });
 
@@ -122,6 +152,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get batch dashboard data
+  app.get("/api/dashboard/batch/:batch", async (req, res) => {
+    try {
+      const { batch } = req.params;
+      if (!["2027", "2028"].includes(batch)) {
+        return res.status(400).json({ error: "Invalid batch. Must be 2027 or 2028" });
+      }
+      const dashboardData = await storage.getBatchDashboard(batch);
+      res.json(dashboardData);
+    } catch (error) {
+      console.error('Error fetching batch dashboard:', error);
+      res.status(500).json({ error: "Failed to fetch batch dashboard data" });
+    }
+  });
+
+  // Get university dashboard data (combined batches)
+  app.get("/api/dashboard/university", async (req, res) => {
+    try {
+      const dashboardData = await storage.getUniversityDashboard();
+      res.json(dashboardData);
+    } catch (error) {
+      console.error('Error fetching university dashboard:', error);
+      res.status(500).json({ error: "Failed to fetch university dashboard data" });
+    }
+  });
+
   // Get leaderboard
   app.get("/api/leaderboard", async (req, res) => {
     try {
@@ -133,6 +189,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get batch-specific leaderboard
+  app.get("/api/leaderboard/batch/:batch", async (req, res) => {
+    try {
+      const { batch } = req.params;
+      if (!["2027", "2028"].includes(batch)) {
+        return res.status(400).json({ error: "Invalid batch. Must be 2027 or 2028" });
+      }
+      const leaderboard = await storage.getBatchLeaderboard(batch);
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch batch leaderboard" });
+    }
+  });
+
+  // Get university-wide leaderboard (combined batches)
+  app.get("/api/leaderboard/university", async (req, res) => {
+    try {
+      const leaderboard = await storage.getUniversityLeaderboard();
+      res.json(leaderboard);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch university leaderboard" });
+    }
+  });
+
   // Get all students with basic stats for directory
   app.get("/api/students/all", async (req, res) => {
     try {
@@ -141,6 +221,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching all students:', error);
       res.status(500).json({ error: 'Failed to fetch students' });
+    }
+  });
+
+  // Get students by batch
+  app.get("/api/students/batch/:batch", async (req, res) => {
+    try {
+      const { batch } = req.params;
+      if (!["2027", "2028"].includes(batch)) {
+        return res.status(400).json({ error: "Invalid batch. Must be 2027 or 2028" });
+      }
+      const batchData = await storage.getBatchDashboard(batch);
+      res.json(batchData.students);
+    } catch (error) {
+      console.error('Error fetching batch students:', error);
+      res.status(500).json({ error: 'Failed to fetch batch students' });
     }
   });
 

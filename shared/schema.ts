@@ -8,6 +8,7 @@ export const students = pgTable("students", {
   name: text("name").notNull(),
   leetcodeUsername: text("leetcode_username").notNull().unique(),
   leetcodeProfileLink: text("leetcode_profile_link").notNull(),
+  batch: text("batch").notNull().default("2028"), // "2027" or "2028"
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -89,6 +90,8 @@ export const leetcodeRealTimeData = pgTable("leetcode_realtime_data", {
 export const insertStudentSchema = createInsertSchema(students).omit({
   id: true,
   createdAt: true,
+}).extend({
+  batch: z.enum(["2027", "2028"]).default("2028"),
 });
 
 export const insertDailyProgressSchema = createInsertSchema(dailyProgress).omit({
@@ -186,4 +189,46 @@ export interface AdminDashboardData {
     student: Student;
     weeklyScore: number;
   }[];
+}
+
+export interface BatchDashboardData {
+  batch: string;
+  totalStudents: number;
+  activeStudents: number;
+  avgProblems: number;
+  underperforming: number;
+  maxStreakOverall: number;
+  avgMaxStreak: number;
+  students: (Student & {
+    stats: LeetCodeStats;
+    weeklyProgress: number;
+    streak: number;
+    maxStreak: number;
+    totalActiveDays: number;
+    status: string;
+  })[];
+  leaderboard: {
+    rank: number;
+    student: Student;
+    weeklyScore: number;
+  }[];
+}
+
+export interface UniversityDashboardData {
+  batch2027: BatchDashboardData;
+  batch2028: BatchDashboardData;
+  combined: {
+    totalStudents: number;
+    activeStudents: number;
+    avgProblems: number;
+    underperforming: number;
+    maxStreakOverall: number;
+    avgMaxStreak: number;
+    universityLeaderboard: {
+      rank: number;
+      student: Student;
+      totalSolved: number;
+      batch: string;
+    }[];
+  };
 }
