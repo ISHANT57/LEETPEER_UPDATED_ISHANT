@@ -319,15 +319,21 @@ export class PostgreSQLStorage implements IStorage {
       easySolved: latestProgress.easySolved,
       mediumSolved: latestProgress.mediumSolved,
       hardSolved: latestProgress.hardSolved,
-      acceptanceRate: 0,
-      ranking: 0
+      acceptanceRate: latestProgress.acceptanceRate || 0,
+      ranking: latestProgress.ranking || 0,
+      totalSubmissions: latestProgress.totalSubmissions || 0,
+      totalAccepted: latestProgress.totalAccepted || 0,
+      languageStats: (latestProgress.languageStats as Record<string, number>) || {} as Record<string, number>
     } : {
       totalSolved: 0,
       easySolved: 0,
       mediumSolved: 0,
       hardSolved: 0,
       acceptanceRate: 0,
-      ranking: 0
+      ranking: 0,
+      totalSubmissions: 0,
+      totalAccepted: 0,
+      languageStats: {} as Record<string, number>
     };
 
     return {
@@ -362,15 +368,21 @@ export class PostgreSQLStorage implements IStorage {
           easySolved: latestProgress.easySolved,
           mediumSolved: latestProgress.mediumSolved,
           hardSolved: latestProgress.hardSolved,
-          acceptanceRate: 0,
-          ranking: 0
+          acceptanceRate: latestProgress.acceptanceRate || 0,
+          ranking: latestProgress.ranking || 0,
+          totalSubmissions: latestProgress.totalSubmissions || 0,
+          totalAccepted: latestProgress.totalAccepted || 0,
+          languageStats: (latestProgress.languageStats as Record<string, number>) || {} as Record<string, number>
         } : {
           totalSolved: 0,
           easySolved: 0,
           mediumSolved: 0,
           hardSolved: 0,
           acceptanceRate: 0,
-          ranking: 0
+          ranking: 0,
+          totalSubmissions: 0,
+          totalAccepted: 0,
+          languageStats: {} as Record<string, number>
         };
 
         return {
