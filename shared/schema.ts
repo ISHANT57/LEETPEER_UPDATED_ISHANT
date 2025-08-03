@@ -71,6 +71,20 @@ export const weeklyProgressData = pgTable("weekly_progress_data", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Real-time LeetCode data from submission calendar
+export const leetcodeRealTimeData = pgTable("leetcode_realtime_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").references(() => students.id).notNull(),
+  submissionCalendar: text("submission_calendar").notNull().default('{}'), // JSON string from LeetCode
+  currentStreak: integer("current_streak").notNull().default(0),
+  maxStreak: integer("max_streak").notNull().default(0),
+  totalActiveDays: integer("total_active_days").notNull().default(0),
+  yearlyActivity: jsonb("yearly_activity").notNull().default([]), // Array of {date, count}
+  lastSyncAt: timestamp("last_sync_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertStudentSchema = createInsertSchema(students).omit({
   id: true,
@@ -98,6 +112,13 @@ export const insertWeeklyProgressDataSchema = createInsertSchema(weeklyProgressD
   updatedAt: true,
 });
 
+export const insertLeetcodeRealTimeDataSchema = createInsertSchema(leetcodeRealTimeData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastSyncAt: true,
+});
+
 // Types
 export type Student = typeof students.$inferSelect;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -113,6 +134,9 @@ export type InsertBadge = z.infer<typeof insertBadgeSchema>;
 
 export type WeeklyProgressData = typeof weeklyProgressData.$inferSelect;
 export type InsertWeeklyProgressData = z.infer<typeof insertWeeklyProgressDataSchema>;
+
+export type LeetcodeRealTimeData = typeof leetcodeRealTimeData.$inferSelect;
+export type InsertLeetcodeRealTimeData = z.infer<typeof insertLeetcodeRealTimeDataSchema>;
 
 export type AppSettings = typeof appSettings.$inferSelect;
 

@@ -11,6 +11,8 @@ import {
   type AppSettings,
   type WeeklyProgressData,
   type InsertWeeklyProgressData,
+  type LeetcodeRealTimeData,
+  type InsertLeetcodeRealTimeData,
   type LeetCodeStats,
   type StudentDashboardData,
   type AdminDashboardData,
@@ -19,7 +21,8 @@ import {
   weeklyTrends,
   badges,
   appSettings,
-  weeklyProgressData
+  weeklyProgressData,
+  leetcodeRealTimeData
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
@@ -53,6 +56,12 @@ export interface IStorage {
   createWeeklyProgressData(data: InsertWeeklyProgressData): Promise<WeeklyProgressData>;
   updateWeeklyProgressData(studentId: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined>;
   deleteWeeklyProgressData(studentId: string): Promise<boolean>;
+
+  // LeetCode Real-time Data
+  getLeetcodeRealTimeData(studentId: string): Promise<LeetcodeRealTimeData | undefined>;
+  createLeetcodeRealTimeData(data: InsertLeetcodeRealTimeData): Promise<LeetcodeRealTimeData>;
+  updateLeetcodeRealTimeData(studentId: string, updates: Partial<LeetcodeRealTimeData>): Promise<LeetcodeRealTimeData | undefined>;
+  deleteLeetcodeRealTimeData(studentId: string): Promise<boolean>;
 
   // Badges
   getStudentBadges(studentId: string): Promise<Badge[]>;
@@ -309,10 +318,11 @@ export class PostgreSQLStorage implements IStorage {
     const student = await this.getStudent(studentId);
     if (!student) return undefined;
 
-    const [dailyProgress, badges, weeklyTrends] = await Promise.all([
+    const [dailyProgress, badges, weeklyTrends, realTimeData] = await Promise.all([
       this.getStudentDailyProgress(studentId, 30),
       this.getStudentBadges(studentId),
-      this.getWeeklyTrends(studentId, 12)
+      this.getWeeklyTrends(studentId, 12),
+      this.getLeetcodeRealTimeData(studentId)
     ]);
 
     const latestProgress = dailyProgress[0];
@@ -338,15 +348,23 @@ export class PostgreSQLStorage implements IStorage {
       languageStats: {} as Record<string, number>
     };
 
-    // Get yearly data for heatmap (365 days)
-    const yearlyProgress = await this.getStudentDailyProgress(studentId, 365);
+    // Use real-time data if available, fallback to calculated values
+    const currentStreak = realTimeData?.currentStreak ?? this.calculateStreakFromProgress(dailyProgress);
+    const maxStreak = realTimeData?.maxStreak ?? await this.calculateMaxStreak(studentId);
+    const totalActiveDays = realTimeData?.totalActiveDays ?? await this.calculateTotalActiveDays(studentId);
+    const yearlyActivity = realTimeData?.yearlyActivity ? 
+      (realTimeData.yearlyActivity as Array<{ date: string; count: number }>) : 
+      (await this.getStudentDailyProgress(studentId, 365)).map(p => ({
+        date: p.date,
+        count: p.dailyIncrement
+      }));
     
     return {
       student,
       stats,
-      currentStreak: this.calculateStreakFromProgress(dailyProgress),
-      maxStreak: await this.calculateMaxStreak(studentId),
-      totalActiveDays: await this.calculateTotalActiveDays(studentId),
+      currentStreak,
+      maxStreak,
+      totalActiveDays,
       weeklyRank: 1,
       badges,
       weeklyProgress: weeklyTrends.map(t => t.weeklyIncrement),
@@ -354,10 +372,7 @@ export class PostgreSQLStorage implements IStorage {
         date: p.date,
         count: p.dailyIncrement
       })),
-      yearlyActivity: yearlyProgress.map(p => ({
-        date: p.date,
-        count: p.dailyIncrement
-      }))
+      yearlyActivity
     };
   }
 
@@ -427,14 +442,17 @@ export class PostgreSQLStorage implements IStorage {
           }
         }
 
-        const maxStreak = await this.calculateMaxStreak(student.id);
-        const totalActiveDays = await this.calculateTotalActiveDays(student.id);
+        // Get real-time data if available, fallback to calculated values
+        const realTimeData = await this.getLeetcodeRealTimeData(student.id);
+        const maxStreak = realTimeData?.maxStreak ?? await this.calculateMaxStreak(student.id);
+        const totalActiveDays = realTimeData?.totalActiveDays ?? await this.calculateTotalActiveDays(student.id);
+        const currentStreak = realTimeData?.currentStreak ?? this.calculateStreakFromProgress(recentProgressResult);
 
         return {
           ...student,
           stats,
           weeklyProgress: Math.max(0, currentWeeklyProgress),
-          streak,
+          streak: currentStreak,
           maxStreak,
           totalActiveDays,
           status
@@ -568,6 +586,33 @@ export class PostgreSQLStorage implements IStorage {
   async deleteWeeklyProgressData(studentId: string): Promise<boolean> {
     const result = await db.delete(weeklyProgressData)
       .where(eq(weeklyProgressData.studentId, studentId));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // LeetCode Real-time Data methods
+  async getLeetcodeRealTimeData(studentId: string): Promise<LeetcodeRealTimeData | undefined> {
+    const result = await db.select().from(leetcodeRealTimeData)
+      .where(eq(leetcodeRealTimeData.studentId, studentId))
+      .limit(1);
+    return result[0];
+  }
+
+  async createLeetcodeRealTimeData(data: InsertLeetcodeRealTimeData): Promise<LeetcodeRealTimeData> {
+    const result = await db.insert(leetcodeRealTimeData).values(data).returning();
+    return result[0];
+  }
+
+  async updateLeetcodeRealTimeData(studentId: string, updates: Partial<LeetcodeRealTimeData>): Promise<LeetcodeRealTimeData | undefined> {
+    const result = await db.update(leetcodeRealTimeData)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(leetcodeRealTimeData.studentId, studentId))
+      .returning();
+    return result[0];
+  }
+
+  async deleteLeetcodeRealTimeData(studentId: string): Promise<boolean> {
+    const result = await db.delete(leetcodeRealTimeData)
+      .where(eq(leetcodeRealTimeData.studentId, studentId));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 

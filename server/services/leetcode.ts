@@ -1,6 +1,15 @@
 import { storage } from "../storage";
 import type { LeetCodeStats } from "@shared/schema";
 
+// Enhanced interface to include streak and activity data
+interface EnhancedLeetCodeStats extends LeetCodeStats {
+  submissionCalendar: string;
+  currentStreak: number;
+  maxStreak: number;
+  totalActiveDays: number;
+  yearlyActivity: Array<{ date: string; count: number }>;
+}
+
 interface LeetCodeResponse {
   data: {
     matchedUser: {
@@ -53,6 +62,139 @@ interface LeetCodeResponse {
 export class LeetCodeService {
   private readonly GRAPHQL_ENDPOINT = "https://leetcode.com/graphql";
   
+  /**
+   * Parse LeetCode's submission calendar JSON to calculate streaks and activity data
+   */
+  private parseSubmissionCalendar(calendarJson: string): {
+    currentStreak: number;
+    maxStreak: number;
+    totalActiveDays: number;
+    yearlyActivity: Array<{ date: string; count: number }>;
+  } {
+    try {
+      const calendar = JSON.parse(calendarJson);
+      
+      // Convert timestamps to activity data
+      const activityData: Array<{ date: string; count: number; timestamp: number }> = [];
+      
+      // Process all timestamps from the calendar
+      for (const [timestampStr, count] of Object.entries(calendar)) {
+        const timestamp = parseInt(timestampStr);
+        const date = new Date(timestamp * 1000); // Convert to milliseconds
+        const dateStr = date.toISOString().split('T')[0];
+        
+        activityData.push({
+          date: dateStr,
+          count: count as number,
+          timestamp
+        });
+      }
+      
+      // Sort by timestamp (oldest first for proper processing)
+      activityData.sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Get today's date for streak calculations
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // End of today
+      
+      // Calculate current streak (consecutive days from today backwards)
+      const sortedByDateDesc = [...activityData].sort((a, b) => b.timestamp - a.timestamp);
+      let currentStreak = 0;
+      
+      // Get today as a date string
+      const todayStr = today.toISOString().split('T')[0];
+      let checkDateStr = todayStr;
+      let checkDate = new Date(todayStr);
+      
+      // Create a map for quick lookup by date string
+      const activityMap = new Map<string, number>();
+      activityData.forEach(activity => {
+        activityMap.set(activity.date, activity.count);
+      });
+      
+      // Count consecutive days from today backwards
+      while (true) {
+        const count = activityMap.get(checkDateStr) || 0;
+        if (count > 0) {
+          currentStreak++;
+          // Move to previous day
+          checkDate.setDate(checkDate.getDate() - 1);
+          checkDateStr = checkDate.toISOString().split('T')[0];
+        } else {
+          break; // Streak is broken
+        }
+      }
+      
+      // Calculate max streak by checking consecutive days
+      let maxStreak = 0;
+      let tempStreak = 0;
+      
+      // Sort activity data by date for sequential processing
+      const sortedByDate = [...activityData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      let previousDate: Date | null = null;
+      
+      for (const activity of sortedByDate) {
+        if (activity.count > 0) {
+          const currentDate = new Date(activity.date);
+          
+          if (previousDate === null) {
+            // First active day
+            tempStreak = 1;
+          } else {
+            // Check if this is consecutive day
+            const daysDiff = Math.floor((currentDate.getTime() - previousDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (daysDiff === 1) {
+              // Consecutive day
+              tempStreak++;
+            } else {
+              // Gap in days, restart streak
+              tempStreak = 1;
+            }
+          }
+          
+          maxStreak = Math.max(maxStreak, tempStreak);
+          previousDate = currentDate;
+        }
+      }
+      
+      // Calculate total active days
+      const totalActiveDays = activityData.filter(activity => activity.count > 0).length;
+      
+      // Create yearly activity array (past year)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(today.getFullYear() - 1);
+      const yearlyActivity: Array<{ date: string; count: number }> = [];
+      
+      // Generate all dates for the past year
+      const currentDate = new Date(oneYearAgo);
+      while (currentDate <= today) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        yearlyActivity.push({
+          date: dateStr,
+          count: activityMap.get(dateStr) || 0
+        });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      return {
+        currentStreak,
+        maxStreak,
+        totalActiveDays,
+        yearlyActivity
+      };
+    } catch (error) {
+      console.error('Error parsing submission calendar:', error);
+      return {
+        currentStreak: 0,
+        maxStreak: 0,
+        totalActiveDays: 0,
+        yearlyActivity: []
+      };
+    }
+  }
+  
   private readonly USER_PROFILE_QUERY = `
     query getUserProfile($username: String!) {
       matchedUser(username: $username) {
@@ -102,7 +244,7 @@ export class LeetCodeService {
     }
   `;
 
-  async fetchUserStats(username: string): Promise<LeetCodeStats | null> {
+  async fetchUserStats(username: string): Promise<EnhancedLeetCodeStats | null> {
     try {
       const response = await fetch(this.GRAPHQL_ENDPOINT, {
         method: 'POST',
@@ -151,6 +293,10 @@ export class LeetCodeService {
         return acc;
       }, {});
 
+      // Parse submission calendar for streak and activity data
+      const submissionCalendar = data.data.matchedUser.submissionCalendar || '{}';
+      const { currentStreak, maxStreak, totalActiveDays, yearlyActivity } = this.parseSubmissionCalendar(submissionCalendar);
+
       return {
         totalSolved,
         easySolved,
@@ -161,6 +307,11 @@ export class LeetCodeService {
         totalSubmissions: totalSubmissionCount,
         totalAccepted: totalAcceptedCount,
         languageStats: languageStatsObj,
+        submissionCalendar,
+        currentStreak,
+        maxStreak,
+        totalActiveDays,
+        yearlyActivity,
       };
     } catch (error) {
       console.error(`Error fetching LeetCode data for ${username}:`, error);
@@ -226,6 +377,23 @@ export class LeetCodeService {
       
       // Check for badge achievements
       await this.checkBadgeAchievements(studentId, stats, dailyIncrement);
+
+      // Store or update real-time data
+      const existingRealTimeData = await storage.getLeetcodeRealTimeData(studentId);
+      const realTimeDataToStore = {
+        studentId,
+        submissionCalendar: stats.submissionCalendar,
+        currentStreak: stats.currentStreak,
+        maxStreak: stats.maxStreak,
+        totalActiveDays: stats.totalActiveDays,
+        yearlyActivity: stats.yearlyActivity,
+      };
+
+      if (existingRealTimeData) {
+        await storage.updateLeetcodeRealTimeData(studentId, realTimeDataToStore);
+      } else {
+        await storage.createLeetcodeRealTimeData(realTimeDataToStore);
+      }
 
       return true;
     } catch (error) {
