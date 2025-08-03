@@ -44,6 +44,7 @@ export const BADGE_TYPES = {
 
 export const STATUS_COLORS = {
   'Excellent': 'bg-green-100 text-green-800',
+  'Good': 'bg-emerald-100 text-emerald-800',
   'Active': 'bg-blue-100 text-blue-800',
   'Underperforming': 'bg-red-100 text-red-800'
 } as const;

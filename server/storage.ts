@@ -402,14 +402,16 @@ export class PostgreSQLStorage implements IStorage {
         // Calculate streak from recent progress
         const streak = this.calculateStreakFromProgress(recentProgressResult);
 
-        // Determine better status based on recent activity
+        // Determine status based on weekly progress thresholds
         let status = 'inactive';
         if (stats.totalSolved > 0) {
-          if (currentWeeklyProgress >= 10) {
+          if (currentWeeklyProgress >= 35) {
             status = 'Excellent';
-          } else if (currentWeeklyProgress >= 5 || streak >= 3) {
+          } else if (currentWeeklyProgress >= 25) {
+            status = 'Good';
+          } else if (currentWeeklyProgress >= 15) {
             status = 'Active';
-          } else if (stats.totalSolved > 0) {
+          } else {
             status = 'Underperforming';
           }
         }

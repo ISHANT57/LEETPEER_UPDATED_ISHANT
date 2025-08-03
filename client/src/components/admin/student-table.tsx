@@ -57,7 +57,12 @@ export default function StudentTable({ data }: StudentTableProps) {
               </TableCell>
               <TableCell>
                 <Badge 
-                  variant={student.weeklyProgress >= 15 ? "default" : student.weeklyProgress >= 5 ? "secondary" : "destructive"}
+                  variant={
+                    student.weeklyProgress >= 35 ? "default" : 
+                    student.weeklyProgress >= 25 ? "secondary" : 
+                    student.weeklyProgress >= 15 ? "outline" : 
+                    "destructive"
+                  }
                 >
                   +{student.weeklyProgress}
                 </Badge>
