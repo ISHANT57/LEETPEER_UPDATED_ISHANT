@@ -81,7 +81,7 @@ postgresql://username:password@ep-xxx-xxx.us-east-1.aws.neon.tech/leetcode_track
 - **Runtime**: `Node`
 - **Build Command**: 
   ```
-  npm install && npm run build
+  npm install && npm run build && node deploy-setup.js
   ```
 - **Start Command**: 
   ```
