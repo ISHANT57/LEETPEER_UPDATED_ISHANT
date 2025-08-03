@@ -356,12 +356,22 @@ export class PostgreSQLStorage implements IStorage {
 
     const studentsWithStats = await Promise.all(
       students.map(async (student) => {
-        const latestProgressResult = await db.select().from(dailyProgress)
-          .where(eq(dailyProgress.studentId, student.id))
-          .orderBy(desc(dailyProgress.date))
-          .limit(1);
+        const [latestProgressResult, weeklyProgressResult, recentProgressResult] = await Promise.all([
+          db.select().from(dailyProgress)
+            .where(eq(dailyProgress.studentId, student.id))
+            .orderBy(desc(dailyProgress.date))
+            .limit(1),
+          db.select().from(weeklyProgressData)
+            .where(eq(weeklyProgressData.studentId, student.id))
+            .limit(1),
+          db.select().from(dailyProgress)
+            .where(eq(dailyProgress.studentId, student.id))
+            .orderBy(desc(dailyProgress.date))
+            .limit(7) // Get last 7 days for streak calculation
+        ]);
         
         const latestProgress = latestProgressResult[0];
+        const weeklyProgress = weeklyProgressResult[0];
         
         const stats: LeetCodeStats = latestProgress ? {
           totalSolved: latestProgress.totalSolved,
@@ -385,17 +395,36 @@ export class PostgreSQLStorage implements IStorage {
           languageStats: {} as Record<string, number>
         };
 
+        // Calculate real-time weekly progress
+        const currentWeeklyProgress = weeklyProgress ? 
+          (latestProgress?.totalSolved || 0) - (weeklyProgress.week4Score || 0) : 0;
+
+        // Calculate streak from recent progress
+        const streak = this.calculateStreakFromProgress(recentProgressResult);
+
+        // Determine better status based on recent activity
+        let status = 'inactive';
+        if (stats.totalSolved > 0) {
+          if (currentWeeklyProgress >= 10) {
+            status = 'Excellent';
+          } else if (currentWeeklyProgress >= 5 || streak >= 3) {
+            status = 'Active';
+          } else if (stats.totalSolved > 0) {
+            status = 'Underperforming';
+          }
+        }
+
         return {
           ...student,
           stats,
-          weeklyProgress: 0,
-          streak: 0,
-          status: stats.totalSolved > 0 ? 'active' : 'inactive'
+          weeklyProgress: Math.max(0, currentWeeklyProgress),
+          streak,
+          status
         };
       })
     );
 
-    const activeStudents = studentsWithStats.filter(s => s.status === 'active').length;
+    const activeStudents = studentsWithStats.filter(s => s.status !== 'inactive').length;
     const avgProblems = studentsWithStats.reduce((sum, s) => sum + s.stats.totalSolved, 0) / totalStudents;
     const underperforming = studentsWithStats.filter(s => s.stats.totalSolved < avgProblems * 0.7).length;
 
