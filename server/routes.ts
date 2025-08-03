@@ -8,7 +8,7 @@ import { weeklyProgressImportService } from "./services/weekly-progress-import";
 import path from 'path';
 import { insertStudentSchema } from "@shared/schema";
 import studentsData from "../attached_assets/students_1753783623487.json";
-import batch2027Data from "../attached_assets/batch_2027_students.json";
+import batch2027Data from "../attached_assets/batch_2027_real_students.json";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize students from JSON file
@@ -64,6 +64,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error importing Batch 2027 students:', error);
       res.status(500).json({ error: "Failed to import Batch 2027 students" });
+    }
+  });
+
+  // Replace existing Batch 2027 students with real data
+  app.post("/api/replace-batch-2027", async (req, res) => {
+    try {
+      // First, delete all existing Batch 2027 students
+      const existingStudents = await storage.getStudentsByBatch('2027');
+      console.log(`Found ${existingStudents.length} existing Batch 2027 students to replace`);
+      
+      for (const student of existingStudents) {
+        await storage.deleteStudentByUsername(student.leetcodeUsername);
+      }
+      
+      // Import the real Batch 2027 students
+      let importedCount = 0;
+      for (const studentData of batch2027Data) {
+        await storage.createStudent({
+          name: studentData.name,
+          leetcodeUsername: studentData.leetcodeUsername,
+          leetcodeProfileLink: studentData.leetcodeProfileLink,
+          batch: "2027",
+        });
+        importedCount++;
+      }
+      
+      res.json({ 
+        message: `Replaced Batch 2027 with ${importedCount} real students`,
+        deleted: existingStudents.length,
+        imported: importedCount 
+      });
+    } catch (error) {
+      console.error('Error replacing Batch 2027 students:', error);
+      res.status(500).json({ error: "Failed to replace Batch 2027 students" });
     }
   });
 

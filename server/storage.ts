@@ -129,6 +129,8 @@ export class PostgreSQLStorage implements IStorage {
       await db.delete(badges).where(eq(badges.studentId, id));
       await db.delete(weeklyTrends).where(eq(weeklyTrends.studentId, id));
       await db.delete(dailyProgress).where(eq(dailyProgress.studentId, id));
+      await db.delete(leetcodeRealTimeData).where(eq(leetcodeRealTimeData.studentId, id));
+      await db.delete(weeklyProgressData).where(eq(weeklyProgressData.studentId, id));
       
       // Then delete the student
       const result = await db.delete(students).where(eq(students.id, id));
