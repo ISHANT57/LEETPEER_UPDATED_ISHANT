@@ -33,7 +33,12 @@ function main() {
   const distPublicPath = path.resolve(__dirname, 'dist', 'public');
   const serverPublicPath = path.resolve(__dirname, 'server', 'public');
   
+  // Additional paths for different deployment environments
+  const clientDistPath = path.resolve(__dirname, 'client', 'dist');
+  
   console.log('Setting up deployment files...');
+  console.log('Current working directory:', process.cwd());
+  console.log('Script directory:', __dirname);
   
   if (!fs.existsSync(distPublicPath)) {
     console.error('Error: Build directory not found at', distPublicPath);
@@ -44,8 +49,13 @@ function main() {
   console.log('Copying client build files to server/public...');
   copyDir(distPublicPath, serverPublicPath);
   
+  // Also create client/dist directory and copy files there for deployment platforms that expect it
+  console.log('Creating client/dist directory for deployment compatibility...');
+  copyDir(distPublicPath, clientDistPath);
+  
   console.log('Deployment setup complete!');
-  console.log('Production server can now find the static files at:', serverPublicPath);
+  console.log('Production server can find static files at:', serverPublicPath);
+  console.log('Deployment platforms can find files at:', clientDistPath);
 }
 
 main();
