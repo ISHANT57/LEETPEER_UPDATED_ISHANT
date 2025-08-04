@@ -18,7 +18,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerHealthRoutes(app);
 
   // Initialize students from JSON file
-  app.post("/api/init-students", asyncHandler(async (req, res) => {
+  app.post("/api/init-students", asyncHandler(async (req: any, res: any) => {
     try {
       let importedCount = 0;
       
@@ -254,30 +254,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all students with basic stats for directory
-  app.get("/api/students/all", async (req, res) => {
+  app.get("/api/students/all", asyncHandler(async (req: any, res: any) => {
+    // Set shorter timeout for this critical endpoint
+    req.setTimeout(10000); // 10 seconds
+    res.setTimeout(10000);
+    
+    // Send immediate response headers to prevent timeout
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Connection', 'keep-alive');
+    
     try {
-      // Add request timeout
+      console.log('Fetching students data...');
+      
+      // Use even more aggressive timeout
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
+        setTimeout(() => reject(new Error('Request timeout')), 6000) // 6 seconds
       );
       
       const dataPromise = storage.getAdminDashboard();
       const adminData = await Promise.race([dataPromise, timeoutPromise]);
       
+      console.log('Students data fetched successfully');
       res.json(adminData.students);
     } catch (error: any) {
       console.error('Error fetching all students:', error);
       
       // Return more specific error information
       if (error?.message === 'Request timeout') {
-        res.status(504).json({ error: 'Request timeout - please try again' });
+        res.status(504).json({ 
+          error: 'Server is overloaded. Please try again in a few seconds.',
+          code: 'TIMEOUT',
+          retryAfter: 5
+        });
+      } else if (error?.message?.includes('Connection pool timeout')) {
+        res.status(503).json({ 
+          error: 'Too many simultaneous requests. Please try again.',
+          code: 'POOL_TIMEOUT',
+          retryAfter: 3
+        });
       } else if (error?.message?.includes('database')) {
-        res.status(503).json({ error: 'Database temporarily unavailable' });
+        res.status(503).json({ 
+          error: 'Database temporarily unavailable',
+          code: 'DB_ERROR'
+        });
       } else {
-        res.status(500).json({ error: 'Failed to fetch students' });
+        res.status(500).json({ 
+          error: 'Failed to fetch students',
+          code: 'INTERNAL_ERROR'
+        });
       }
     }
-  });
+  }));
 
   // Get students by batch
   app.get("/api/students/batch/:batch", async (req, res) => {
@@ -342,7 +369,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync all students
-  app.post("/api/sync/all", async (req, res) => {
+  app.post("/api/sync/all", syncRateLimit, asyncHandler(async (req: any, res: any) => {
+    // Set a longer timeout for sync operations
+    req.setTimeout(120000); // 2 minutes timeout
+    res.setTimeout(120000);
+    
     try {
       const result = await schedulerService.manualSync();
       res.json(result);
@@ -350,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error syncing all students:', error);
       res.status(500).json({ error: "Failed to sync all students" });
     }
-  });
+  }));
 
   // Sync profile photos from LeetCode
   app.post("/api/sync/profile-photos", async (req, res) => {

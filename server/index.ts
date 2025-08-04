@@ -17,6 +17,14 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 // Apply rate limiting to API routes
 app.use('/api', apiRateLimit);
 
+// Set server timeouts
+app.use((req, res, next) => {
+  // Set default timeout to 30 seconds
+  req.setTimeout(30000);
+  res.setTimeout(30000);
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

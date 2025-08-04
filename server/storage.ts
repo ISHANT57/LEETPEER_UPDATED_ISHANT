@@ -29,6 +29,7 @@ import {
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { retryDbOperation, batchDbOperations } from "./utils/db-utils";
+import { withConnection } from "./utils/connection-pool";
 
 export interface IStorage {
   // Students
@@ -111,7 +112,7 @@ export class PostgreSQLStorage implements IStorage {
   }
 
   async getAllStudents(): Promise<Student[]> {
-    return retryDbOperation(async () => {
+    return withConnection(async () => {
       return await db.select().from(students).orderBy(students.name);
     });
   }

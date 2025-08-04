@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LoadingBoundary } from "@/components/LoadingBoundary";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 import Sidebar from "@/components/sidebar";
 import StudentDashboard from "@/pages/student-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -46,6 +47,7 @@ function App() {
               <Sidebar />
               <Router />
             </div>
+            <ConnectionStatus onRetry={() => window.location.reload()} />
           </LoadingBoundary>
           <Toaster />
         </TooltipProvider>
