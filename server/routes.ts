@@ -8,6 +8,7 @@ import { weeklyProgressImportService } from "./services/weekly-progress-import";
 import { registerHealthRoutes } from "./routes/health";
 import { syncRateLimit } from "./middleware/rate-limiter";
 import { asyncHandler } from "./middleware/error-handler";
+import { cacheMiddleware, staticCacheMiddleware } from "./middleware/render-cache";
 import path from 'path';
 import { insertStudentSchema } from "@shared/schema";
 import studentsData from "../attached_assets/students_1753783623487.json";
@@ -181,8 +182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get admin dashboard data
-  app.get("/api/dashboard/admin", async (req, res) => {
+  // Get admin dashboard data (with caching)
+  app.get("/api/dashboard/admin", cacheMiddleware(300), async (req, res) => { // 5 minute cache
     try {
       const dashboardData = await storage.getAdminDashboard();
       res.json(dashboardData);
@@ -218,8 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get leaderboard
-  app.get("/api/leaderboard", async (req, res) => {
+  // Get leaderboard (with caching)
+  app.get("/api/leaderboard", cacheMiddleware(180), async (req, res) => { // 3 minute cache
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const leaderboard = await storage.getLeaderboard();
@@ -253,8 +254,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all students with basic stats for directory
-  app.get("/api/students/all", asyncHandler(async (req: any, res: any) => {
+  // Get all students with basic stats for directory (with caching for Render)
+  app.get("/api/students/all", cacheMiddleware(120), asyncHandler(async (req: any, res: any) => { // 2 minute cache
     // Set shorter timeout for this critical endpoint
     req.setTimeout(10000); // 10 seconds
     res.setTimeout(10000);

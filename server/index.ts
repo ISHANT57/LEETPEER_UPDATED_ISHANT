@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { globalErrorHandler } from "./middleware/error-handler";
 import { apiRateLimit } from "./middleware/rate-limiter";
+import { renderConfig, validateRenderEnvironment, setupRenderMonitoring } from "./config/render-config";
 
 const app = express();
 
@@ -17,13 +18,22 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 // Apply rate limiting to API routes
 app.use('/api', apiRateLimit);
 
-// Set server timeouts
+// Set server timeouts optimized for Render
 app.use((req, res, next) => {
-  // Set default timeout to 30 seconds
-  req.setTimeout(30000);
-  res.setTimeout(30000);
+  // Use Render-optimized timeouts
+  req.setTimeout(renderConfig.server.timeout);
+  res.setTimeout(renderConfig.server.timeout);
   next();
 });
+
+// Add compression for better performance on Render
+if (process.env.NODE_ENV === 'production') {
+  const compression = require('compression');
+  app.use(compression({
+    level: 6,
+    threshold: 1024,
+  }));
+}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -57,6 +67,11 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Validate Render environment
+    if (process.env.NODE_ENV === 'production' && !validateRenderEnvironment()) {
+      process.exit(1);
+    }
+
     // Test database connection
     await db.execute('SELECT 1');
     console.log('PostgreSQL connected successfully');
@@ -79,16 +94,26 @@ app.use((req, res, next) => {
     // Other ports are firewalled. Default to 5000 if not specified.
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
-    const port = parseInt(process.env.PORT || '5000', 10);
+    const port = renderConfig.server.port;
     server.listen({
       port,
-      host: "0.0.0.0",
+      host: renderConfig.server.host,
       reusePort: true,
     }, () => {
       log(`serving on port ${port}`);
+      
+      // Setup monitoring for production
+      if (process.env.NODE_ENV === 'production') {
+        setupRenderMonitoring();
+        console.log('✅ Render monitoring enabled');
+      }
     });
+
+    // Render-specific server optimizations
+    server.keepAliveTimeout = renderConfig.server.keepAliveTimeout;
+    server.headersTimeout = renderConfig.server.headersTimeout;
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('Server startup error:', error);
     process.exit(1);
   }
 })();

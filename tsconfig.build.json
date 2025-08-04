@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./server",
+    "skipLibCheck": true,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": [
+    "server/**/*"
+  ],
+  "exclude": [
+    "server/vite.ts",
+    "client/**/*",
+    "node_modules"
+  ]
+}
