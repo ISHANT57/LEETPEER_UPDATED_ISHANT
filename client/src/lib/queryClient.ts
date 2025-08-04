@@ -47,27 +47,25 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 2 * 60 * 1000, // 2 minutes for fresher data
-      gcTime: 5 * 60 * 1000, // 5 minutes garbage collection
+      staleTime: 30 * 1000, // 30 seconds for ultra-fresh data
+      gcTime: 2 * 60 * 1000, // 2 minutes garbage collection
       retry: (failureCount, error: any) => {
-        // Don't retry on timeout or 4xx errors
-        if (error?.message?.includes('40') || error?.message?.includes('timeout')) return false;
-        // Retry up to 3 times for network/server errors
-        return failureCount < 3;
+        // Don't retry timeouts, 4xx errors, or server busy errors
+        if (error?.message?.includes('40') || 
+            error?.message?.includes('timeout') || 
+            error?.message?.includes('503') ||
+            error?.message?.includes('BUSY')) return false;
+        // Only retry once for other errors
+        return failureCount < 1;
       },
-      retryDelay: (attemptIndex) => {
-        // Faster retry for better user experience
-        return Math.min(500 * 2 ** attemptIndex, 3000);
-      },
+      retryDelay: () => 200, // Very fast retry
     },
     mutations: {
       retry: (failureCount, error: any) => {
-        // Don't retry mutations on 4xx errors or timeouts
-        if (error?.message?.includes('40') || error?.message?.includes('timeout')) return false;
-        // Only retry mutations once for server errors
-        return failureCount < 1;
+        // No retries for mutations to avoid duplicate operations
+        return false;
       },
-      retryDelay: 500, // Faster retry for mutations
+      retryDelay: 200,
     },
   },
 });

@@ -6,6 +6,7 @@ import { schedulerService } from "./services/scheduler";
 import { csvImportService } from "./services/csv-import";
 import { weeklyProgressImportService } from "./services/weekly-progress-import";
 import { registerHealthRoutes } from "./routes/health";
+import { registerEmergencyFallback } from "./routes/emergency-fallback";
 import { syncRateLimit } from "./middleware/rate-limiter";
 import { asyncHandler } from "./middleware/error-handler";
 import { cacheMiddleware, staticCacheMiddleware } from "./middleware/render-cache";
@@ -17,6 +18,9 @@ import batch2027Data from "../attached_assets/batch_2027_real_students.json";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register health check routes
   registerHealthRoutes(app);
+  
+  // Register emergency fallback routes
+  registerEmergencyFallback(app);
 
   // Initialize students from JSON file
   app.post("/api/init-students", asyncHandler(async (req: any, res: any) => {
@@ -254,54 +258,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all students with basic stats for directory (with caching for Render)
-  app.get("/api/students/all", cacheMiddleware(120), asyncHandler(async (req: any, res: any) => { // 2 minute cache
-    // Set shorter timeout for this critical endpoint
-    req.setTimeout(10000); // 10 seconds
-    res.setTimeout(10000);
+  // Get all students with basic stats for directory (ultra-fast response)
+  app.get("/api/students/all", cacheMiddleware(60), asyncHandler(async (req: any, res: any) => { // 1 minute cache
+    // Set very aggressive timeout
+    req.setTimeout(5000); // 5 seconds max
+    res.setTimeout(5000);
     
-    // Send immediate response headers to prevent timeout
-    res.setHeader('Cache-Control', 'no-store');
+    // Send immediate response headers
+    res.setHeader('Cache-Control', 'public, max-age=60');
     res.setHeader('Connection', 'keep-alive');
     
     try {
-      console.log('Fetching students data...');
+      console.log('Fetching students data (fast mode)...');
       
-      // Use even more aggressive timeout
+      // Ultra-aggressive timeout - 4 seconds max
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 6000) // 6 seconds
+        setTimeout(() => reject(new Error('Request timeout')), 4000)
       );
       
       const dataPromise = storage.getAdminDashboard();
       const adminData = await Promise.race([dataPromise, timeoutPromise]);
       
-      console.log('Students data fetched successfully');
+      console.log(`Students data fetched successfully: ${adminData.students.length} students`);
       res.json(adminData.students);
     } catch (error: any) {
       console.error('Error fetching all students:', error);
       
-      // Return more specific error information
-      if (error?.message === 'Request timeout') {
-        res.status(504).json({ 
-          error: 'Server is overloaded. Please try again in a few seconds.',
-          code: 'TIMEOUT',
-          retryAfter: 5
-        });
-      } else if (error?.message?.includes('Connection pool timeout')) {
+      // Return fast error response
+      if (error?.message?.includes('timeout') || error?.message?.includes('pool')) {
         res.status(503).json({ 
-          error: 'Too many simultaneous requests. Please try again.',
-          code: 'POOL_TIMEOUT',
-          retryAfter: 3
-        });
-      } else if (error?.message?.includes('database')) {
-        res.status(503).json({ 
-          error: 'Database temporarily unavailable',
-          code: 'DB_ERROR'
+          error: 'Server busy. Retrying...', 
+          code: 'BUSY',
+          retryAfter: 2
         });
       } else {
         res.status(500).json({ 
-          error: 'Failed to fetch students',
-          code: 'INTERNAL_ERROR'
+          error: 'Data unavailable',
+          code: 'ERROR'
         });
       }
     }

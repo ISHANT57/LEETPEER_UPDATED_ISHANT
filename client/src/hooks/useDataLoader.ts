@@ -1,104 +1,87 @@
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
-import { dispatchDataLoaded, dispatchDataError } from '@/components/LoadingBoundary';
+import { useQuery } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
 
-interface UseDataLoaderOptions {
-  queryKey: (string | number)[];
-  enabled?: boolean;
-  staleTime?: number;
-  retry?: boolean | number;
-  retryDelay?: number;
-  onSuccess?: (data: any) => void;
-  onError?: (error: any) => void;
+interface DataLoaderOptions {
+  endpoint: string;
+  fallbackEndpoint?: string;
+  cacheTime?: number;
+  retryAttempts?: number;
 }
 
-export function useDataLoader<T = any>({
-  queryKey,
-  enabled = true,
-  staleTime = 5 * 60 * 1000, // 5 minutes
-  retry = 2,
-  retryDelay = 1000,
-  onSuccess,
-  onError,
-}: UseDataLoaderOptions): UseQueryResult<T> & {
-  hasTimedOut: boolean;
-} {
-  const [hasTimedOut, setHasTimedOut] = useState(false);
-
-  const query = useQuery<T>({
-    queryKey,
-    enabled,
-    staleTime,
+export function useDataLoader<T>({ 
+  endpoint, 
+  fallbackEndpoint, 
+  cacheTime = 30000,
+  retryAttempts = 1
+}: DataLoaderOptions) {
+  const [useFallback, setUseFallback] = useState(false);
+  
+  const currentEndpoint = useFallback && fallbackEndpoint ? fallbackEndpoint : endpoint;
+  
+  const query = useQuery({
+    queryKey: [currentEndpoint],
+    queryFn: async (): Promise<T> => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(currentEndpoint, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          if (response.status === 503 || response.status === 504) {
+            throw new Error('SERVER_BUSY');
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error: any) {
+        if (error.name === 'AbortError' || error.message === 'SERVER_BUSY') {
+          if (!useFallback && fallbackEndpoint) {
+            setUseFallback(true);
+            throw new Error('FALLBACK_NEEDED');
+          }
+        }
+        throw error;
+      }
+    },
+    staleTime: cacheTime,
+    gcTime: cacheTime * 2,
     retry: (failureCount, error: any) => {
-      // Don't retry on 4xx errors
-      if (error?.message?.includes('40')) return false;
-      if (typeof retry === 'boolean') return retry && failureCount < 2;
-      return failureCount < retry;
+      if (error?.message === 'FALLBACK_NEEDED') {
+        return true; // Allow one retry with fallback
+      }
+      return failureCount < retryAttempts;
     },
-    retryDelay: (attemptIndex) => {
-      return Math.min(retryDelay * Math.pow(2, attemptIndex), 5000);
-    },
+    retryDelay: 100, // Fast retry
   });
 
-  // Handle loading timeout
-  useEffect(() => {
-    if (!query.isLoading) return;
+  const forceRefresh = useCallback(() => {
+    setUseFallback(false);
+    query.refetch();
+  }, [query]);
 
-    const timeoutId = setTimeout(() => {
-      if (query.isLoading) {
-        setHasTimedOut(true);
-        dispatchDataError('Request is taking longer than expected. Please check your connection.');
-      }
-    }, 15000); // 15 second timeout
-
-    return () => clearTimeout(timeoutId);
-  }, [query.isLoading]);
-
-  // Dispatch events for loading boundary
-  useEffect(() => {
-    if (query.isSuccess) {
-      dispatchDataLoaded();
-      onSuccess?.(query.data);
+  const switchToFallback = useCallback(() => {
+    if (fallbackEndpoint) {
+      setUseFallback(true);
+      query.refetch();
     }
-  }, [query.isSuccess, query.data, onSuccess]);
-
-  useEffect(() => {
-    if (query.isError) {
-      const errorMessage = query.error?.message || 'Failed to load data';
-      dispatchDataError(errorMessage);
-      onError?.(query.error);
-    }
-  }, [query.isError, query.error, onError]);
+  }, [fallbackEndpoint, query]);
 
   return {
     ...query,
-    hasTimedOut,
+    isFallback: useFallback,
+    forceRefresh,
+    switchToFallback,
+    hasError: query.isError,
+    isEmpty: !query.data && !query.isLoading,
   };
-}
-
-// Specialized hook for student data
-export function useStudentData() {
-  return useDataLoader<any[]>({
-    queryKey: ['/api/students/all'],
-    staleTime: 2 * 60 * 1000, // 2 minutes for frequently updated data
-    retry: 3,
-  });
-}
-
-// Specialized hook for dashboard data with better error handling
-export function useDashboardData(type: 'admin' | 'university' | string) {
-  const endpoint = type === 'admin' 
-    ? '/api/dashboard/admin'
-    : type === 'university'
-    ? '/api/dashboard/university'
-    : `/api/dashboard/batch/${type}`;
-
-  return useDataLoader({
-    queryKey: [endpoint],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-    onError: (error) => {
-      console.error(`Dashboard data error (${type}):`, error);
-    },
-  });
 }

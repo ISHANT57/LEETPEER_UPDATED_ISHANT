@@ -80,6 +80,7 @@ export const cacheMiddleware = (ttlSeconds: number = 300) => {
     if (cachedData) {
       res.setHeader('X-Cache', 'HIT');
       res.setHeader('Cache-Control', `public, max-age=${ttlSeconds}`);
+      res.setHeader('Access-Control-Allow-Origin', '*');
       return res.json(cachedData);
     }
 

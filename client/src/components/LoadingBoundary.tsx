@@ -1,122 +1,117 @@
-import React, { ReactNode, useState, useEffect } from 'react';
-import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { queryClient } from '@/lib/queryClient';
 
-interface LoadingState {
-  isLoading: boolean;
-  error?: string;
-  timeoutError?: boolean;
+interface LoadingBoundaryProps {
+  children: React.ReactNode;
 }
 
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-  timeout?: number; // in milliseconds
-}
-
-export const LoadingBoundary: React.FC<Props> = ({ 
-  children, 
-  fallback, 
-  timeout = 30000 // 30 seconds default
-}) => {
-  const [loadingState, setLoadingState] = useState<LoadingState>({
-    isLoading: true,
-    error: undefined,
-    timeoutError: false,
-  });
+export const LoadingBoundary: React.FC<LoadingBoundaryProps> = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingStart, setLoadingStart] = useState<number | null>(null);
 
   useEffect(() => {
-    // Set loading timeout
-    const timeoutId = setTimeout(() => {
-      setLoadingState(prev => ({
-        ...prev,
-        isLoading: false,
-        timeoutError: true,
-        error: 'Request timed out. The server might be experiencing high load.',
-      }));
-    }, timeout);
+    let timeoutId: NodeJS.Timeout;
 
-    // Listen for data loading completion
-    const handleDataLoaded = () => {
-      clearTimeout(timeoutId);
-      setLoadingState({ isLoading: false });
-    };
-
-    // Listen for data loading errors
-    const handleDataError = (event: CustomEvent) => {
-      clearTimeout(timeoutId);
-      setLoadingState({
-        isLoading: false,
-        error: event.detail.message || 'Failed to load data',
-        timeoutError: false,
-      });
-    };
-
-    // Add event listeners
-    window.addEventListener('dataLoaded', handleDataLoaded);
-    window.addEventListener('dataError', handleDataError as EventListener);
+    // Listen for query loading states
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query?.state?.status === 'pending') {
+        setIsLoading(true);
+        setLoadingStart(Date.now());
+        setError(null);
+        
+        // Set timeout for loading state
+        timeoutId = setTimeout(() => {
+          setError('Request is taking longer than expected. The server might be busy.');
+        }, 5000); // 5 seconds timeout warning
+      } else {
+        setIsLoading(false);
+        setLoadingStart(null);
+        clearTimeout(timeoutId);
+        
+        if (event?.query?.state?.status === 'error') {
+          const errorMessage = event.query.state.error?.message || 'Unknown error';
+          if (errorMessage.includes('timeout') || errorMessage.includes('503')) {
+            setError('Server is busy. Please wait a moment and try again.');
+          } else {
+            setError('Failed to load data. Please try again.');
+          }
+        } else {
+          setError(null);
+        }
+      }
+    });
 
     return () => {
+      unsubscribe();
       clearTimeout(timeoutId);
-      window.removeEventListener('dataLoaded', handleDataLoaded);
-      window.removeEventListener('dataError', handleDataError as EventListener);
     };
-  }, [timeout]);
+  }, []);
 
   const handleRetry = () => {
-    setLoadingState({ isLoading: true });
+    setError(null);
+    setIsLoading(false);
+    queryClient.invalidateQueries();
+    // Force reload after a short delay
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
+
+  const handleClearCache = () => {
+    queryClient.clear();
+    setError(null);
+    setIsLoading(false);
     window.location.reload();
   };
 
-  if (loadingState.error) {
+  // Show error overlay for critical errors
+  if (error && error.includes('Server is busy')) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full space-y-4">
           <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>
-              {loadingState.timeoutError ? 'Connection Timeout' : 'Loading Error'}
-            </AlertTitle>
-            <AlertDescription className="mt-2">
-              {loadingState.error}
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="space-y-4">
+              <div>{error}</div>
+              <div className="flex gap-2">
+                <Button onClick={handleRetry} size="sm" variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+                <Button onClick={handleClearCache} size="sm" variant="outline">
+                  Clear Cache
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
-          
-          <div className="mt-4 flex flex-col gap-2">
-            <Button onClick={handleRetry} className="w-full">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
         </div>
       </div>
     );
   }
 
-  if (loadingState.isLoading) {
-    if (fallback) {
-      return <>{fallback}</>;
-    }
-
+  // Show loading indicator for long requests
+  if (isLoading && loadingStart && (Date.now() - loadingStart) > 3000) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading your data...</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="text-sm text-gray-600">
+            Loading data... This may take a moment.
+          </div>
+          {loadingStart && (Date.now() - loadingStart) > 5000 && (
+            <Button onClick={handleRetry} size="sm" variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          )}
         </div>
       </div>
     );
   }
 
   return <>{children}</>;
-};
-
-// Helper functions to dispatch loading events
-export const dispatchDataLoaded = () => {
-  window.dispatchEvent(new CustomEvent('dataLoaded'));
-};
-
-export const dispatchDataError = (message: string) => {
-  window.dispatchEvent(new CustomEvent('dataError', { detail: { message } }));
 };
