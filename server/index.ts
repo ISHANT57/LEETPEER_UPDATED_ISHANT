@@ -1,4 +1,7 @@
+
+
 import express, { type Request, Response, NextFunction } from "express";
+import compression from 'compression'; // Import at the top
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
@@ -28,7 +31,7 @@ app.use((req, res, next) => {
 
 // Add compression for better performance on Render
 if (process.env.NODE_ENV === 'production') {
-  const compression = require('compression');
+  // Use the imported module conditionally
   app.use(compression({
     level: 6,
     threshold: 1024,
@@ -101,7 +104,7 @@ app.use((req, res, next) => {
       reusePort: true,
     }, () => {
       log(`serving on port ${port}`);
-      
+
       // Setup monitoring for production
       if (process.env.NODE_ENV === 'production') {
         setupRenderMonitoring();
