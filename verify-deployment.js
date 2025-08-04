@@ -7,8 +7,11 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
-const __dirname = import.meta.dirname;
+// Handle different Node.js environments
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function checkFile(filePath, description) {
   const exists = fs.existsSync(filePath);

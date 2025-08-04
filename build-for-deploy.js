@@ -7,6 +7,12 @@
 
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Handle different Node.js environments
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function runCommand(command, args = []) {
   return new Promise((resolve, reject) => {

@@ -40,6 +40,10 @@ Created multiple deployment scripts to handle various platform requirements:
 1. Set build command: `npm install && npm run build && node deploy-universal.js`
 2. Set start command: `npm start`
 
+**Option 3 (Maximum Compatibility):**
+1. Set build command: `npm install && npm run build && node deploy-simple.cjs`
+2. Set start command: `npm start`
+
 ### For manual deployment:
 1. Run `node build-for-deploy.js` (complete build)
    OR

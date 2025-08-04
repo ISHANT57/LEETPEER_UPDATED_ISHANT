@@ -79,9 +79,16 @@ postgresql://username:password@ep-xxx-xxx.us-east-1.aws.neon.tech/leetcode_track
 
 **Build & Deploy:**
 - **Runtime**: `Node`
-- **Build Command**: 
+- **Build Command** (choose one that works):
   ```
+  # Option 1: Complete build script (recommended)
+  node build-for-deploy.js
+  
+  # Option 2: Manual steps
   npm install && npm run build && node deploy-universal.js
+  
+  # Option 3: Fallback for compatibility issues
+  npm install && npm run build && node deploy-simple.cjs
   ```
 - **Start Command**: 
   ```
