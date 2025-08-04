@@ -1,5 +1,7 @@
 # LeetCode Tracker - Render Deployment Guide
 
+⚠️ **UPDATED GUIDE AVAILABLE**: For the most recent, error-free deployment instructions, see `RENDER_COMPLETE_GUIDE.md`
+
 This guide provides complete instructions for deploying the full-stack LeetCode tracking application to Render.
 
 ## Overview
