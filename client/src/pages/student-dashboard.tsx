@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Link } from "wouter";
-import { RefreshCw, ArrowLeft, ExternalLink } from "lucide-react";
+import { RefreshCw, ArrowLeft, ExternalLink, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -103,59 +103,77 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="flex-1 overflow-auto">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                All Students
-              </Button>
-            </Link>
-            <Avatar className="h-12 w-12">
-              {data?.student?.profilePhoto && (
-                <AvatarImage src={data.student.profilePhoto} alt={data.student.name} />
-              )}
-              <AvatarFallback className="bg-primary/10">
-                {data?.student?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || username?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900">
-                {data?.student?.name || username}
-              </h2>
-              <div className="flex items-center space-x-2">
-                <p className="text-sm text-slate-500">@{username}</p>
-                {data?.student?.leetcodeProfileLink && (
-                  <a 
-                    href={data.student.leetcodeProfileLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                  >
-                    <ExternalLink className="h-3 w-3 ml-1" />
-                  </a>
-                )}
+    <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative px-6 py-16">
+          <div className="flex justify-between items-center">
+            <div className="animate-fade-in">
+              <div className="flex items-center gap-6 mb-4">
+                <div className="relative">
+                  <Avatar className="w-20 h-20 ring-4 ring-white/30 shadow-2xl">
+                    {data?.student?.profilePhoto && (
+                      <AvatarImage src={data.student.profilePhoto} alt={data.student.name} />
+                    )}
+                    <AvatarFallback className="bg-white/20 text-white text-2xl font-bold backdrop-blur-sm">
+                      {data?.student?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || username?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white shadow-lg"></div>
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold text-white mb-2">
+                    {data?.student?.name || username}
+                  </h1>
+                  <div className="flex items-center gap-4 text-white/90">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span>@{username}</span>
+                    </div>
+                    {data?.student?.leetcodeProfileLink && (
+                      <a 
+                        href={data.student.leetcodeProfileLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 hover:text-white transition-colors"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span>LeetCode Profile</span>
+                      </a>
+                    )}
+                  </div>
+                  <div className="text-white/80 text-sm mt-1">
+                    Personal LeetCode analytics and progress tracking
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-slate-500">
-              <RefreshCw className="inline mr-1" size={14} />
-              Last sync: 2 min ago
+            <div className="flex gap-3 animate-slide-up">
+              <Link href="/">
+                <Button 
+                  variant="outline"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  All Students
+                </Button>
+              </Link>
+              <Button 
+                onClick={handleSync} 
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
+                variant="outline"
+              >
+                <RefreshCw className="mr-2" size={16} />
+                Sync Now
+              </Button>
             </div>
-            <Button onClick={handleSync} className="bg-leetcode-primary hover:bg-blue-600">
-              <RefreshCw className="mr-2" size={16} />
-              Sync Now
-            </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Dashboard Content */}
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-8 -mt-8">
         <StatsOverview data={data} />
         
         <RankingOverview data={data} />
