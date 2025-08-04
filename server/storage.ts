@@ -28,6 +28,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
+import { retryDbOperation, batchDbOperations } from "./utils/db-utils";
 
 export interface IStorage {
   // Students
@@ -110,7 +111,9 @@ export class PostgreSQLStorage implements IStorage {
   }
 
   async getAllStudents(): Promise<Student[]> {
-    return await db.select().from(students);
+    return retryDbOperation(async () => {
+      return await db.select().from(students).orderBy(students.name);
+    });
   }
 
   async createStudent(insertStudent: InsertStudent): Promise<Student> {
@@ -497,6 +500,7 @@ export class PostgreSQLStorage implements IStorage {
           name: student.name,
           leetcodeUsername: student.leetcodeUsername,
           leetcodeProfileLink: student.leetcodeProfileLink,
+          profilePhoto: student.profilePhoto,
           batch: student.batch,
           createdAt: student.createdAt
         },
@@ -859,6 +863,7 @@ export class PostgreSQLStorage implements IStorage {
           name: student.name,
           leetcodeUsername: student.leetcodeUsername,
           leetcodeProfileLink: student.leetcodeProfileLink,
+          profilePhoto: student.profilePhoto,
           batch: student.batch,
           createdAt: student.createdAt
         },

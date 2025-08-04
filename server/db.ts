@@ -19,5 +19,11 @@ if (databaseUrl.endsWith("'")) {
 }
 
 console.log('Connecting to database...');
-const sql = neon(databaseUrl);
+
+// Configure Neon connection with better settings for production
+const sql = neon(databaseUrl, {
+  arrayMode: false,
+  fullResults: false
+});
+
 export const db = drizzle(sql);

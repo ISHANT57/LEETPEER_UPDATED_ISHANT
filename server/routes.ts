@@ -5,14 +5,20 @@ import { leetCodeService } from "./services/leetcode";
 import { schedulerService } from "./services/scheduler";
 import { csvImportService } from "./services/csv-import";
 import { weeklyProgressImportService } from "./services/weekly-progress-import";
+import { registerHealthRoutes } from "./routes/health";
+import { syncRateLimit } from "./middleware/rate-limiter";
+import { asyncHandler } from "./middleware/error-handler";
 import path from 'path';
 import { insertStudentSchema } from "@shared/schema";
 import studentsData from "../attached_assets/students_1753783623487.json";
 import batch2027Data from "../attached_assets/batch_2027_real_students.json";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register health check routes
+  registerHealthRoutes(app);
+
   // Initialize students from JSON file
-  app.post("/api/init-students", async (req, res) => {
+  app.post("/api/init-students", asyncHandler(async (req, res) => {
     try {
       let importedCount = 0;
       
@@ -37,7 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error importing students:', error);
       res.status(500).json({ error: "Failed to import students" });
     }
-  });
+  }));
 
   // Import Batch 2027 students
   app.post("/api/init-batch-2027", async (req, res) => {
@@ -250,11 +256,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all students with basic stats for directory
   app.get("/api/students/all", async (req, res) => {
     try {
-      const adminData = await storage.getAdminDashboard();
+      // Add request timeout
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+      
+      const dataPromise = storage.getAdminDashboard();
+      const adminData = await Promise.race([dataPromise, timeoutPromise]);
+      
       res.json(adminData.students);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching all students:', error);
-      res.status(500).json({ error: 'Failed to fetch students' });
+      
+      // Return more specific error information
+      if (error?.message === 'Request timeout') {
+        res.status(504).json({ error: 'Request timeout - please try again' });
+      } else if (error?.message?.includes('database')) {
+        res.status(503).json({ error: 'Database temporarily unavailable' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch students' });
+      }
     }
   });
 

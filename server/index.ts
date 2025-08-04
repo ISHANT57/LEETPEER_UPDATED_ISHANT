@@ -2,10 +2,20 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
+import { globalErrorHandler } from "./middleware/error-handler";
+import { apiRateLimit } from "./middleware/rate-limiter";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Apply rate limiting to API routes
+app.use('/api', apiRateLimit);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -45,13 +55,8 @@ app.use((req, res, next) => {
 
     const server = await registerRoutes(app);
 
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-
-      res.status(status).json({ message });
-      throw err;
-    });
+    // Use global error handler
+    app.use(globalErrorHandler);
 
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route
