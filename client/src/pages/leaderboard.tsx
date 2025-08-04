@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Medal, Award } from "lucide-react";
+import { Trophy, Medal, Award, Crown, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import type { AdminDashboardData } from "@shared/schema";
 
 export default function Leaderboard() {
@@ -21,12 +23,16 @@ export default function Leaderboard() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-16 bg-slate-200 rounded"></div>
-          ))}
+      <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-yellow-50 to-orange-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-32 bg-slate-200 rounded-2xl"></div>
+            <div className="space-y-4">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="h-20 bg-slate-200 rounded-xl loading-shimmer"></div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -34,83 +40,179 @@ export default function Leaderboard() {
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex-1 p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h3 className="text-yellow-800 font-medium">No leaderboard data</h3>
-          <p className="text-yellow-600 text-sm mt-1">No student progress data available yet.</p>
+      <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-yellow-50 to-orange-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="relative overflow-hidden bg-gradient-to-r from-yellow-600 via-orange-600 to-red-600">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative px-6 py-16">
+            <div className="text-center animate-fade-in">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mx-auto">
+                  <Trophy className="text-white" size={32} />
+                </div>
+              </div>
+              <h1 className="text-5xl font-bold text-white mb-4">Leaderboard</h1>
+              <p className="text-white/90 text-xl max-w-2xl mx-auto">
+                No rankings available yet - compete to see your name here!
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="text-yellow-500" size={20} />;
-    if (rank === 2) return <Medal className="text-slate-400" size={20} />;
-    if (rank === 3) return <Award className="text-amber-600" size={20} />;
-    return <span className="font-bold text-slate-600">{rank}</span>;
+    if (rank === 1) return <Crown className="text-yellow-500" size={24} />;
+    if (rank === 2) return <Medal className="text-slate-400" size={24} />;
+    if (rank === 3) return <Award className="text-amber-600" size={24} />;
+    return <Star className="text-blue-500" size={20} />;
   };
 
   const getRankStyle = (rank: number) => {
-    if (rank === 1) return 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200';
-    if (rank === 2) return 'bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200';
-    if (rank === 3) return 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200';
-    return 'bg-slate-50 border-slate-200';
+    if (rank === 1) return 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-yellow-300 dark:border-yellow-600';
+    if (rank === 2) return 'bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-700 dark:to-gray-700 border-2 border-slate-300 dark:border-slate-500';
+    if (rank === 3) return 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-300 dark:border-amber-600';
+    return 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700';
+  };
+
+  const getScoreBadgeStyle = (rank: number) => {
+    if (rank === 1) return 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white';
+    if (rank === 2) return 'bg-gradient-to-r from-slate-300 to-slate-400 text-white';
+    if (rank === 3) return 'bg-gradient-to-r from-amber-400 to-amber-500 text-white';
+    return 'bg-gradient-to-r from-blue-400 to-blue-500 text-white';
   };
 
   return (
-    <div className="flex-1 overflow-auto">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Leaderboard</h2>
-          <p className="text-sm text-slate-500">Weekly performance rankings</p>
+    <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-yellow-50 to-orange-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-yellow-600 via-orange-600 to-red-600">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative px-6 py-16">
+          <div className="text-center animate-fade-in">
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mx-auto">
+                <Trophy className="text-white" size={32} />
+              </div>
+            </div>
+            <h1 className="text-5xl font-bold text-white mb-4">Hall of Fame</h1>
+            <p className="text-white/90 text-xl max-w-2xl mx-auto">
+              Weekly performance rankings showcasing our top performers
+            </p>
+            <div className="text-white/80 text-sm mt-2">
+              Compete, excel, and claim your spot among the champions
+            </div>
+          </div>
         </div>
-      </header>
+      </div>
 
       {/* Leaderboard Content */}
-      <div className="p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="text-yellow-500" size={24} />
+      <div className="p-6 space-y-8 -mt-8">
+        <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm animate-fade-in">
+          <CardHeader className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 rounded-t-2xl border-b border-yellow-200 dark:border-yellow-800">
+            <CardTitle className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900 rounded-xl flex items-center justify-center">
+                <Trophy className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+              </div>
               Weekly Champions
+              <Badge className="ml-auto bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                {data.length} Competitors
+              </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {data.map((entry) => (
+          <CardContent className="p-0">
+            <div className="space-y-1">
+              {data.map((entry, index) => (
                 <div 
                   key={entry.student.id}
-                  className={`flex items-center justify-between p-4 rounded-lg border transition-all hover:shadow-md ${getRankStyle(entry.rank)}`}
+                  className={`flex items-center justify-between p-6 transition-all duration-300 hover:shadow-lg animate-slide-up ${getRankStyle(entry.rank)} ${
+                    index === data.length - 1 ? 'rounded-b-2xl' : ''
+                  } ${index === 0 ? 'rounded-t-2xl' : ''}`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 flex items-center justify-center">
+                  <div className="flex items-center space-x-6">
+                    <div className="flex items-center gap-3">
                       {getRankIcon(entry.rank)}
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg ${
+                        entry.rank === 1 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white' : 
+                        entry.rank === 2 ? 'bg-gradient-to-r from-slate-300 to-slate-400 text-white' : 
+                        entry.rank === 3 ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-white' :
+                        'bg-gradient-to-r from-blue-400 to-blue-500 text-white'
+                      }`}>
+                        {entry.rank}
+                      </div>
                     </div>
-                    <img 
-                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40"
-                      alt="Student" 
-                      className="w-10 h-10 rounded-full object-cover" 
-                    />
+                    
+                    <Avatar className="w-14 h-14 ring-2 ring-white dark:ring-slate-700 shadow-lg">
+                      {entry.student.profilePhoto && (
+                        <AvatarImage src={entry.student.profilePhoto} alt={entry.student.name} />
+                      )}
+                      <AvatarFallback className="bg-gradient-primary text-white font-bold text-lg">
+                        {entry.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    
                     <div>
-                      <p className="font-semibold text-slate-900 text-lg">{entry.student.name}</p>
-                      <p className="text-sm text-slate-500">@{entry.student.leetcodeUsername}</p>
+                      <h3 className="font-bold text-xl text-slate-900 dark:text-white">{entry.student.name}</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                        <span>@{entry.student.leetcodeUsername}</span>
+                        {entry.rank <= 3 && (
+                          <Star className="h-3 w-3 text-yellow-500 fill-current" />
+                        )}
+                      </p>
                     </div>
                   </div>
+                  
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-slate-900">+{entry.weeklyScore}</p>
-                    <p className="text-sm text-slate-500">problems this week</p>
-                    {entry.student.stats?.ranking && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        LeetCode Rank: #{entry.student.stats.ranking.toLocaleString()}
-                      </p>
-                    )}
+                    <div className={`px-4 py-2 rounded-full font-bold text-xl shadow-lg ${getScoreBadgeStyle(entry.rank)}`}>
+                      +{entry.weeklyScore}
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">this week</p>
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+
+        {/* Additional Stats */}
+        {data.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="modern-card hover-lift bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-0 shadow-xl animate-slide-up">
+              <CardContent className="p-6 text-center">
+                <Crown className="h-12 w-12 mx-auto mb-3 text-yellow-500" />
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{data[0]?.student.name}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Current Champion</p>
+                <div className="mt-2 text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+                  +{data[0]?.weeklyScore}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card hover-lift bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-0 shadow-xl animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <CardContent className="p-6 text-center">
+                <Trophy className="h-12 w-12 mx-auto mb-3 text-blue-500" />
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{data.length}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Competitors</p>
+                <div className="mt-2 text-lg font-semibold text-blue-600 dark:text-blue-400">
+                  Active This Week
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card hover-lift bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-0 shadow-xl animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              <CardContent className="p-6 text-center">
+                <Star className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {Math.round(data.reduce((sum, entry) => sum + entry.weeklyScore, 0) / data.length)}
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Average Score</p>
+                <div className="mt-2 text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                  Problems Solved
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,377 +1,312 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Loader2, Upload, TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } from "recharts";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, TrendingUp, TrendingDown, Calendar, Users, RefreshCw, Target } from "lucide-react";
+import { useState } from "react";
+import { Link } from "wouter";
 
-interface WeeklyProgressStudent {
+interface WeeklyProgress {
   student: {
+    id: string;
     name: string;
     leetcodeUsername: string;
-    leetcodeProfileLink: string;
-  } | null;
-  weeklyData: {
-    week1: number;
-    week2: number;
-    week3: number;
-    week4: number;
+    profilePhoto?: string;
+    batch: string;
   };
-  progressIncrements: {
-    week2Progress: number;
-    week3Progress: number;
-    week4Progress: number;
-  };
-  realTimeData: {
-    currentSolved: number;
-    newIncrement: number;
-    lastUpdated: string;
-  };
-  summary: {
-    totalScore: number;
-    averageWeeklyGrowth: number;
+  weekStarting: string;
+  problemsSolved: number;
+  improvement: number;
+  streakDays: number;
+  difficultyBreakdown: {
+    easy: number;
+    medium: number;
+    hard: number;
   };
 }
 
 export default function WeeklyProgressPage() {
-  const { toast } = useToast();
-  const [sortBy, setSortBy] = useState<'currentSolved' | 'newIncrement' | 'name'>('currentSolved');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch weekly progress data
-  const { data: weeklyProgressData, isLoading } = useQuery<WeeklyProgressStudent[]>({
+  const { data: weeklyData, isLoading, error, refetch } = useQuery<WeeklyProgress[]>({
     queryKey: ['/api/weekly-progress'],
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Import weekly progress data mutation
-  const importMutation = useMutation({
-    mutationFn: () => apiRequest('/api/import/weekly-progress', 'POST'),
-    onSuccess: (data: any) => {
-      toast({
-        title: "Import Successful",
-        description: data.message || "Weekly progress data imported successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/weekly-progress'] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Import Failed",
-        description: `Failed to import weekly progress data: ${error.message}`,
-        variant: "destructive",
-      });
-    },
-  });
+  const filteredData = weeklyData?.filter(progress =>
+    progress.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    progress.student.leetcodeUsername.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
-  const handleImport = () => {
-    importMutation.mutate();
-  };
-
-  const getTrendIcon = (value: number) => {
-    if (value > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
-    if (value < 0) return <TrendingDown className="h-4 w-4 text-red-500" />;
-    return <Minus className="h-4 w-4 text-gray-500" />;
-  };
-
-  const getTrendColor = (value: number) => {
-    if (value > 0) return "text-green-600 bg-green-50";
-    if (value < 0) return "text-red-600 bg-red-50";
-    return "text-gray-600 bg-gray-50";
-  };
-
-  // Helper function to safely display numeric values
-  const safeDisplayValue = (value: number | undefined | null): string => {
-    if (value === null || value === undefined || isNaN(value)) {
-      return "0";
-    }
-    return value.toString();
-  };
-
-  // Sort data
-  const sortedData = weeklyProgressData ? [...weeklyProgressData].sort((a, b) => {
-    if (!a.student || !b.student) return 0;
-    
-    let aValue: number | string;
-    let bValue: number | string;
-    
-    switch (sortBy) {
-      case 'currentSolved':
-        aValue = a.realTimeData?.currentSolved || 0;
-        bValue = b.realTimeData?.currentSolved || 0;
-        break;
-      case 'newIncrement':
-        aValue = a.realTimeData?.newIncrement || 0;
-        bValue = b.realTimeData?.newIncrement || 0;
-        break;
-      case 'name':
-        aValue = a.student.name;
-        bValue = b.student.name;
-        break;
-      default:
-        return 0;
-    }
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-    }
-    
-    const numA = aValue as number;
-    const numB = bValue as number;
-    return sortOrder === 'asc' ? numA - numB : numB - numA;
-  }) : [];
-
-  // Prepare chart data for top 10 students
-  const chartData = sortedData.slice(0, 10).map(student => ({
-    name: student.student?.name.split(' ')[0] || 'Unknown',
-    Week1: student.weeklyData.week1,
-    Week2: student.weeklyData.week2,
-    Week3: student.weeklyData.week3,
-    Week4: student.weeklyData.week4,
-  }));
-
-  // Calculate summary statistics
-  const summaryStats = weeklyProgressData ? {
-    totalStudents: weeklyProgressData.length,
-    averageCurrentSolved: Math.round(weeklyProgressData.reduce((sum, s) => sum + (s.realTimeData?.currentSolved || 0), 0) / weeklyProgressData.length),
-    averageNewIncrement: Math.round(weeklyProgressData.reduce((sum, s) => sum + (s.realTimeData?.newIncrement || 0), 0) / weeklyProgressData.length),
-    positiveGrowthStudents: weeklyProgressData.filter(s => (s.realTimeData?.newIncrement || 0) > 0).length,
+  // Calculate summary stats
+  const summaryStats = weeklyData ? {
+    totalStudents: weeklyData.length,
+    totalProblems: weeklyData.reduce((sum, p) => sum + p.problemsSolved, 0),
+    averageProblems: Math.round(weeklyData.reduce((sum, p) => sum + p.problemsSolved, 0) / weeklyData.length),
+    improving: weeklyData.filter(p => p.improvement > 0).length,
+    declining: weeklyData.filter(p => p.improvement < 0).length
   } : null;
+
+  if (error) {
+    return (
+      <div className="flex-1 p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-red-800 font-medium">Error loading weekly progress</h3>
+          <p className="text-red-600 text-sm mt-1">Failed to load weekly progress data.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading weekly progress data...</span>
+      <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-32 bg-slate-200 rounded-2xl loading-shimmer"></div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 bg-slate-200 rounded-xl loading-shimmer"></div>
+              ))}
+            </div>
+            <div className="space-y-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-32 bg-slate-200 rounded-xl loading-shimmer"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!weeklyData || weeklyData.length === 0) {
+    return (
+      <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="relative overflow-hidden bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative px-6 py-16">
+            <div className="text-center animate-fade-in">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm mx-auto">
+                  <Calendar className="text-white" size={32} />
+                </div>
+              </div>
+              <h1 className="text-5xl font-bold text-white mb-4">Weekly Progress</h1>
+              <p className="text-white/90 text-xl max-w-2xl mx-auto">
+                No weekly progress data available yet
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Weekly Progress Analysis</h1>
-          <p className="text-muted-foreground">Track weekly LeetCode progress from Week 1 to Week 4</p>
-        </div>
-        <Button onClick={handleImport} disabled={importMutation.isPending}>
-          {importMutation.isPending ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Upload className="h-4 w-4 mr-2" />
-          )}
-          Import Weekly Data
-        </Button>
-      </div>
-
-      {/* Summary Statistics */}
-      {summaryStats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{safeDisplayValue(summaryStats.totalStudents)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Average Current Solved</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{safeDisplayValue(summaryStats.averageCurrentSolved)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Average New Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{safeDisplayValue(summaryStats.averageNewIncrement)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Students with New Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {safeDisplayValue(summaryStats.positiveGrowthStudents)}
-                <span className="text-sm font-normal text-muted-foreground">
-                  /{safeDisplayValue(summaryStats.totalStudents)}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Progress Chart */}
-      {chartData.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2" />
-              Top 10 Students - Weekly Progress Trend
-            </CardTitle>
-            <CardDescription>Weekly progress visualization for top performing students</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="Week1" stroke="#8884d8" strokeWidth={2} />
-                <Line type="monotone" dataKey="Week2" stroke="#82ca9d" strokeWidth={2} />
-                <Line type="monotone" dataKey="Week3" stroke="#ffc658" strokeWidth={2} />
-                <Line type="monotone" dataKey="Week4" stroke="#ff7300" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Data Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+    <div className="flex-1 min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative px-6 py-16">
+          <div className="flex justify-between items-center animate-fade-in">
             <div>
-              <CardTitle>Weekly Progress Data</CardTitle>
-              <CardDescription>Detailed weekly progress with incremental analysis</CardDescription>
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                  <Calendar className="text-white" size={32} />
+                </div>
+              </div>
+              <h1 className="text-5xl font-bold text-white mb-4">Weekly Progress Tracking</h1>
+              <p className="text-white/90 text-xl max-w-2xl">
+                Monitor student performance and improvement trends week by week
+              </p>
+              <div className="text-white/80 text-sm mt-2">
+                Analyzing {summaryStats?.totalStudents} students with {summaryStats?.totalProblems} problems solved this week
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium">Sort by:</label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="border rounded px-2 py-1 text-sm"
-              >
-                <option value="currentSolved">Current Solved</option>
-                <option value="newIncrement">New Progress</option>
-                <option value="name">Name</option>
-              </select>
-              <Button
+            
+            <div className="flex gap-3 animate-slide-in-right">
+              <Button 
+                onClick={() => refetch()}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
                 variant="outline"
-                size="sm"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               >
-                {sortOrder === 'asc' ? '↑' : '↓'}
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh Data
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead className="text-center">Week 1</TableHead>
-                  <TableHead className="text-center">Week 2</TableHead>
-                  <TableHead className="text-center">Week 3</TableHead>
-                  <TableHead className="text-center">Week 4</TableHead>
-                  <TableHead className="text-center">W2-W1</TableHead>
-                  <TableHead className="text-center">W3-W2</TableHead>
-                  <TableHead className="text-center">W4-W3</TableHead>
-                  <TableHead className="text-center">Current</TableHead>
-                  <TableHead className="text-center">New Progress</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedData.map((studentData, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{studentData.student?.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          @{studentData.student?.leetcodeUsername}
+        </div>
+      </div>
+
+      <div className="p-6 space-y-8 -mt-8">
+        {/* Summary Stats */}
+        {summaryStats && (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <Card className="modern-card hover-lift bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-0 shadow-xl animate-fade-in">
+              <CardContent className="p-6 text-center">
+                <Users className="h-12 w-12 mx-auto mb-3 text-blue-500" />
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{summaryStats.totalStudents}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Active Students</p>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card hover-lift bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border-0 shadow-xl animate-fade-in" style={{ animationDelay: '0.1s' }}>
+              <CardContent className="p-6 text-center">
+                <Target className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{summaryStats.totalProblems}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Problems</p>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card hover-lift bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border-0 shadow-xl animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              <CardContent className="p-6 text-center">
+                <Calendar className="h-12 w-12 mx-auto mb-3 text-cyan-500" />
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{summaryStats.averageProblems}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Average per Student</p>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card hover-lift bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-0 shadow-xl animate-fade-in" style={{ animationDelay: '0.3s' }}>
+              <CardContent className="p-6 text-center">
+                <TrendingUp className="h-12 w-12 mx-auto mb-3 text-green-500" />
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{summaryStats.improving}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Improving</p>
+              </CardContent>
+            </Card>
+
+            <Card className="modern-card hover-lift bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/20 dark:to-pink-900/20 border-0 shadow-xl animate-fade-in" style={{ animationDelay: '0.4s' }}>
+              <CardContent className="p-6 text-center">
+                <TrendingDown className="h-12 w-12 mx-auto mb-3 text-red-500" />
+                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{summaryStats.declining}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Need Support</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Weekly Progress List */}
+        <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm animate-fade-in">
+          <CardHeader className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 rounded-t-2xl border-b border-cyan-200 dark:border-cyan-800">
+            <CardTitle className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900 rounded-xl flex items-center justify-center">
+                <Calendar className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              Weekly Performance Overview
+              <Badge className="ml-auto bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300">
+                {filteredData.length} students
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search students by name or username..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-3 text-lg bg-white dark:bg-slate-800 border-0 shadow-lg rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {filteredData.map((progress, index) => (
+                <div 
+                  key={progress.student.id}
+                  className="flex items-center justify-between p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-all duration-300 animate-slide-up"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <div className="flex items-center space-x-6">
+                    <Avatar className="w-16 h-16 ring-2 ring-white dark:ring-slate-700 shadow-lg">
+                      {progress.student.profilePhoto && (
+                        <AvatarImage src={progress.student.profilePhoto} alt={progress.student.name} />
+                      )}
+                      <AvatarFallback className="bg-gradient-primary text-white font-bold text-lg">
+                        {progress.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    
+                    <div>
+                      <h3 className="font-bold text-xl text-slate-900 dark:text-white">{progress.student.name}</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">@{progress.student.leetcodeUsername}</p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <Badge className={`${
+                          progress.student.batch === '2027' 
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+                            : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
+                        }`}>
+                          Batch {progress.student.batch}
+                        </Badge>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">
+                          Week of {new Date(progress.weekStarting).toLocaleDateString()}
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center font-mono">
-                      {safeDisplayValue(studentData.weeklyData.week1)}
-                    </TableCell>
-                    <TableCell className="text-center font-mono">
-                      {safeDisplayValue(studentData.weeklyData.week2)}
-                    </TableCell>
-                    <TableCell className="text-center font-mono">
-                      {safeDisplayValue(studentData.weeklyData.week3)}
-                    </TableCell>
-                    <TableCell className="text-center font-mono">
-                      {safeDisplayValue(studentData.weeklyData.week4)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className={getTrendColor(studentData.progressIncrements.week2Progress)}>
-                        {getTrendIcon(studentData.progressIncrements.week2Progress)}
-                        <span className="ml-1">{safeDisplayValue(studentData.progressIncrements.week2Progress)}</span>
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className={getTrendColor(studentData.progressIncrements.week3Progress)}>
-                        {getTrendIcon(studentData.progressIncrements.week3Progress)}
-                        <span className="ml-1">{safeDisplayValue(studentData.progressIncrements.week3Progress)}</span>
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className={getTrendColor(studentData.progressIncrements.week4Progress)}>
-                        {getTrendIcon(studentData.progressIncrements.week4Progress)}
-                        <span className="ml-1">{safeDisplayValue(studentData.progressIncrements.week4Progress)}</span>
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className="font-bold text-blue-600">
-                        {safeDisplayValue(studentData.realTimeData?.currentSolved)}
-                      </Badge>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {studentData.realTimeData?.lastUpdated && studentData.realTimeData.lastUpdated !== 'No data' 
-                          ? new Date(studentData.realTimeData.lastUpdated).toLocaleDateString()
-                          : 'No data'}
+                    </div>
+                  </div>
+                  
+                  <div className="text-right space-y-2">
+                    <div className="flex items-center gap-6">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-slate-900 dark:text-white">{progress.problemsSolved}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Problems Solved</div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge 
-                        variant="outline" 
-                        className={(studentData.realTimeData?.newIncrement || 0) > 0 ? "text-green-600 bg-green-50" : 
-                                 (studentData.realTimeData?.newIncrement || 0) < 0 ? "text-red-600 bg-red-50" : "text-gray-600"}
-                      >
-                        {getTrendIcon(studentData.realTimeData?.newIncrement || 0)}
-                        <span className="ml-1">{safeDisplayValue(studentData.realTimeData?.newIncrement)}</span>
+                      
+                      <div className="text-center">
+                        <div className={`text-2xl font-bold ${
+                          progress.improvement > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                          progress.improvement < 0 ? 'text-red-600 dark:text-red-400' :
+                          'text-slate-600 dark:text-slate-400'
+                        }`}>
+                          {progress.improvement > 0 ? '+' : ''}{progress.improvement}
+                        </div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Change</div>
+                      </div>
+                      
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{progress.streakDays}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Streak Days</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Badge className="difficulty-easy px-2 py-1 text-xs font-semibold rounded-full">
+                        Easy: {progress.difficultyBreakdown.easy}
                       </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                      <Badge className="difficulty-medium px-2 py-1 text-xs font-semibold rounded-full">
+                        Medium: {progress.difficultyBreakdown.medium}
+                      </Badge>
+                      <Badge className="difficulty-hard px-2 py-1 text-xs font-semibold rounded-full">
+                        Hard: {progress.difficultyBreakdown.hard}
+                      </Badge>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <Link href={`/student/${progress.student.leetcodeUsername}`}>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          View Profile
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-      {weeklyProgressData?.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground mb-4">No weekly progress data found.</p>
-            <Button onClick={handleImport} disabled={importMutation.isPending}>
-              {importMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
-              )}
-              Import Weekly Data
-            </Button>
+            {filteredData.length === 0 && (
+              <div className="text-center py-12">
+                <Calendar className="h-16 w-16 mx-auto text-slate-400 mb-4" />
+                <h3 className="text-xl font-semibold text-slate-600 dark:text-slate-400 mb-2">No progress data found</h3>
+                <p className="text-slate-500 dark:text-slate-500">
+                  {searchTerm ? 'Try adjusting your search criteria' : 'No weekly progress data available yet'}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
 }
