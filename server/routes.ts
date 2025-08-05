@@ -101,12 +101,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all students
+  // Get all students with enriched data
   app.get("/api/students", async (req, res) => {
     try {
       const students = await storage.getAllStudents();
-      res.json(students);
+      
+      // Enrich each student with real-time data, stats, and streaks
+      const enrichedStudents = await Promise.all(students.map(async (student) => {
+        const realTimeData = await storage.getLeetcodeRealTimeData(student.id);
+        const weeklyData = await storage.getWeeklyProgressData(student.id);
+        const latestProgress = await storage.getLatestDailyProgress(student.id);
+        const currentStreak = await storage.calculateStreak(student.id);
+        const maxStreak = await storage.calculateMaxStreak(student.id);
+        const totalActiveDays = await storage.calculateTotalActiveDays(student.id);
+        
+        // Get stats from latest daily progress instead of real-time data
+        const stats = latestProgress ? {
+          totalSolved: latestProgress.totalSolved || 0,
+          easySolved: latestProgress.easySolved || 0,
+          mediumSolved: latestProgress.mediumSolved || 0,
+          hardSolved: latestProgress.hardSolved || 0,
+          ranking: latestProgress.ranking || 0,
+          acceptanceRate: latestProgress.acceptanceRate || 0,
+          totalSubmissions: latestProgress.totalSubmissions || 0,
+          totalAccepted: latestProgress.totalAccepted || 0,
+        } : {
+          totalSolved: 0,
+          easySolved: 0,
+          mediumSolved: 0,
+          hardSolved: 0,
+          ranking: 0,
+          acceptanceRate: 0,
+          totalSubmissions: 0,
+          totalAccepted: 0,
+        };
+        
+        return {
+          ...student,
+          stats,
+          streak: currentStreak,
+          maxStreak: maxStreak,
+          totalActiveDays: totalActiveDays,
+          weeklyProgress: weeklyData?.currentWeekProblems || 0,
+          lastSubmissionDate: latestProgress?.date,
+          status: latestProgress ? 'Synced' : 'Pending'
+        };
+      }));
+      
+      res.json(enrichedStudents);
     } catch (error) {
+      console.error('Error fetching enriched students:', error);
       res.status(500).json({ error: "Failed to fetch students" });
     }
   });

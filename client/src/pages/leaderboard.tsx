@@ -59,8 +59,15 @@ const LeaderboardEntry = ({ entry, index }: { entry: any; index: number }) => {
         
         <div>
           <h3 className="font-bold text-xl text-slate-900 dark:text-white">{entry.student.name}</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
+          <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
             <span>@{entry.student.leetcodeUsername}</span>
+            <Badge className={`px-2 py-1 text-xs font-semibold ${
+              entry.student.batch === '2027' 
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
+            }`}>
+              Batch {entry.student.batch}
+            </Badge>
             {entry.rank <= 3 && (
               <Star className="h-3 w-3 text-yellow-500 fill-current" />
             )}
@@ -70,9 +77,11 @@ const LeaderboardEntry = ({ entry, index }: { entry: any; index: number }) => {
       
       <div className="text-right">
         <div className={`px-4 py-2 rounded-full font-bold text-xl shadow-lg ${getScoreBadgeStyle(entry.rank)}`}>
-          +{entry.weeklyScore}
+          {entry.weeklyScore !== undefined ? `+${entry.weeklyScore}` : entry.totalSolved || 0}
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">this week</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          {entry.weeklyScore !== undefined ? 'this week' : 'total solved'}
+        </p>
       </div>
     </div>
   );

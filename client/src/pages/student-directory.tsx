@@ -8,11 +8,12 @@ import { Search, Trophy, Calendar, Target, Flame, Users, ExternalLink } from 'lu
 import { Link } from 'wouter';
 
 type Student = {
-  id: number;
+  id: string;
   name: string;
   leetcodeUsername: string;
   leetcodeProfileLink: string;
   profilePhoto?: string;
+  batch: string;
   status: string;
   stats?: {
     totalSolved: number;
@@ -20,11 +21,15 @@ type Student = {
     mediumSolved: number;
     hardSolved: number;
     ranking: number;
+    acceptanceRate: number;
+    totalSubmissions: number;
+    totalAccepted: number;
   };
   streak: number;
   maxStreak: number;
   totalActiveDays: number;
   weeklyProgress: number;
+  lastSubmissionDate?: string;
 };
 
 export default function StudentDirectory() {
@@ -137,6 +142,9 @@ export default function StudentDirectory() {
                           <ExternalLink className="h-3 w-3" />
                           @{student.leetcodeUsername}
                         </CardDescription>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          Batch {student.batch || '2028'}
+                        </div>
                       </div>
                     </div>
                     <Badge className={`${getStatusColor(student.status)} px-3 py-1 rounded-full font-semibold`}>
@@ -199,12 +207,19 @@ export default function StudentDirectory() {
                     </div>
                   </div>
 
-                  {/* Weekly Progress */}
-                  <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">This Week</span>
-                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+{student.weeklyProgress || 0}</span>
+                  {/* Weekly Progress & Last Submission */}
+                  <div className="space-y-2">
+                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">This Week</span>
+                        <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+{student.weeklyProgress || 0}</span>
+                      </div>
                     </div>
+                    {student.lastSubmissionDate && (
+                      <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                        Last active: {new Date(student.lastSubmissionDate).toLocaleDateString()}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
