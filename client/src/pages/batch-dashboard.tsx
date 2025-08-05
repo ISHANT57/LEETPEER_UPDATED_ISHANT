@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { BatchDashboardData } from '@shared/schema';
@@ -298,6 +298,9 @@ export default function BatchDashboard() {
                         <div className="flex items-center space-x-4">
                           <div className="relative">
                             <Avatar className="w-12 h-12 ring-2 ring-white dark:ring-slate-700 shadow-lg">
+                              {student.profilePhoto && (
+                                <AvatarImage src={student.profilePhoto} alt={student.name} />
+                              )}
                               <AvatarFallback className="bg-gradient-primary text-white text-sm font-bold">
                                 {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                               </AvatarFallback>

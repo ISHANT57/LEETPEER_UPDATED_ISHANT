@@ -519,18 +519,36 @@ export class PostgreSQLStorage implements IStorage {
   async getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>> {
     const students = await this.getAllStudents();
     
+    // Get the current week start date (Monday)
+    const today = new Date();
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Monday
+    currentWeekStart.setHours(0, 0, 0, 0);
+    const weekStartString = currentWeekStart.toISOString().split('T')[0];
+    
     const studentsWithScores = await Promise.all(
       students.map(async (student) => {
-        const latestProgressResult = await db.select().from(dailyProgress)
-          .where(eq(dailyProgress.studentId, student.id))
-          .orderBy(desc(dailyProgress.date))
-          .limit(1);
+        // Get current week's trend data for actual weekly score
+        const currentWeekTrend = await this.getWeeklyTrend(student.id, weekStartString);
         
-        const latestProgress = latestProgressResult[0];
+        // If no current week data, calculate from daily progress this week
+        let weeklyScore = 0;
+        if (currentWeekTrend) {
+          weeklyScore = currentWeekTrend.problemsThisWeek || 0;
+        } else {
+          // Calculate from daily progress entries for this week
+          const weekProgress = await db.select().from(dailyProgress)
+            .where(and(
+              eq(dailyProgress.studentId, student.id),
+              sql`date >= ${weekStartString}`
+            ));
+          
+          weeklyScore = weekProgress.reduce((sum, progress) => sum + (progress.dailyIncrement || 0), 0);
+        }
         
         return {
           student,
-          weeklyScore: latestProgress?.totalSolved || 0
+          weeklyScore
         };
       })
     );
@@ -883,18 +901,36 @@ export class PostgreSQLStorage implements IStorage {
   async getBatchLeaderboard(batch: string): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>> {
     const batchStudents = await this.getStudentsByBatch(batch);
     
+    // Get the current week start date (Monday)
+    const today = new Date();
+    const currentWeekStart = new Date(today);
+    currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Monday
+    currentWeekStart.setHours(0, 0, 0, 0);
+    const weekStartString = currentWeekStart.toISOString().split('T')[0];
+    
     const studentsWithScores = await Promise.all(
       batchStudents.map(async (student) => {
-        const latestProgressResult = await db.select().from(dailyProgress)
-          .where(eq(dailyProgress.studentId, student.id))
-          .orderBy(desc(dailyProgress.date))
-          .limit(1);
+        // Get current week's trend data for actual weekly score
+        const currentWeekTrend = await this.getWeeklyTrend(student.id, weekStartString);
         
-        const latestProgress = latestProgressResult[0];
+        // If no current week data, calculate from daily progress this week
+        let weeklyScore = 0;
+        if (currentWeekTrend) {
+          weeklyScore = currentWeekTrend.problemsThisWeek || 0;
+        } else {
+          // Calculate from daily progress entries for this week
+          const weekProgress = await db.select().from(dailyProgress)
+            .where(and(
+              eq(dailyProgress.studentId, student.id),
+              sql`date >= ${weekStartString}`
+            ));
+          
+          weeklyScore = weekProgress.reduce((sum, progress) => sum + (progress.dailyIncrement || 0), 0);
+        }
         
         return {
           student,
-          weeklyScore: latestProgress?.totalSolved || 0
+          weeklyScore
         };
       })
     );
@@ -908,7 +944,7 @@ export class PostgreSQLStorage implements IStorage {
   }
 
   async getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; totalSolved: number; batch: string }>> {
-    const allStudents = await this.getAllStudentsWithBatch();
+    const allStudents = await this.getAllStudents();
     
     const studentsWithScores = await Promise.all(
       allStudents.map(async (student) => {

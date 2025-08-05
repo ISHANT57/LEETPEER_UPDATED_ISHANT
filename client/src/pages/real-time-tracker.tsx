@@ -284,17 +284,17 @@ export default function RealTimeTracker() {
                         </div>
                       </div>
                       
-                      <Avatar className="w-16 h-16 ring-2 ring-white dark:ring-slate-700 shadow-lg">
+                      <Avatar className="w-12 h-12 ring-2 ring-white dark:ring-slate-700 shadow-lg">
                         {ranking.student.profilePhoto && (
                           <AvatarImage src={ranking.student.profilePhoto} alt={ranking.student.name} />
                         )}
-                        <AvatarFallback className="bg-gradient-primary text-white font-bold text-lg">
+                        <AvatarFallback className="bg-gradient-primary text-white font-semibold text-sm">
                           {ranking.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       
                       <div>
-                        <h3 className="font-bold text-xl text-slate-900 dark:text-white">{ranking.student.name}</h3>
+                        <h3 className="font-semibold text-lg text-slate-900 dark:text-white">{ranking.student.name}</h3>
                         <p className="text-sm text-slate-600 dark:text-slate-400">@{ranking.student.leetcodeUsername}</p>
                         <div className="flex items-center gap-4 mt-2">
                           <div className="flex items-center gap-1">
@@ -311,7 +311,7 @@ export default function RealTimeTracker() {
                     <div className="text-right space-y-2">
                       <div className="flex items-center gap-4">
                         <div>
-                          <div className="text-3xl font-bold text-slate-900 dark:text-white">{ranking.stats.totalSolved}</div>
+                          <div className="text-2xl font-bold text-slate-900 dark:text-white">{ranking.stats.totalSolved}</div>
                           <div className="text-sm text-slate-500 dark:text-slate-400">Problems Solved</div>
                         </div>
                         <div className="text-center">
