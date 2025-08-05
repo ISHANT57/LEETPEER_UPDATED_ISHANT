@@ -38,9 +38,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
           <Sidebar />
-          <Router />
+          <main className="flex-1 overflow-x-hidden">
+            <Router />
+          </main>
         </div>
         <Toaster />
       </TooltipProvider>

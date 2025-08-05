@@ -10,8 +10,159 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { UniversityDashboardData } from '@shared/schema';
-import { Search, ExternalLink, Flame, Activity, Trophy, Users, Building2, Target, Upload, RefreshCw } from 'lucide-react';
+import { Search, ExternalLink, Flame, Activity, Trophy, Users, Building2, Target, Upload, RefreshCw, TrendingUp, Star, BarChart } from 'lucide-react';
 import { Link } from 'wouter';
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar } from 'recharts';
+
+// Weekly Progress Chart Component
+const WeeklyProgressChart = ({ data }: { data: any[] }) => {
+  const chartData = data.slice(0, 10).map((student, index) => ({
+    name: student.name.split(' ')[0],
+    problems: student.stats?.totalSolved || 0,
+    streak: student.streak || 0,
+    rank: index + 1
+  }));
+
+  return (
+    <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm">
+      <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-t-2xl border-b border-green-200 dark:border-green-800">
+        <CardTitle className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+          <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-xl flex items-center justify-center">
+            <BarChart className="h-6 w-6 text-green-600 dark:text-green-400" />
+          </div>
+          Weekly Top Performers
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <ResponsiveContainer width="100%" height={300}>
+          <RechartsBarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="problems" fill="#10b981" />
+          </RechartsBarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Batch Progress Component
+const BatchProgressCard = ({ batchData, batchNumber }: { batchData: any; batchNumber: string }) => {
+  const totalProblems = batchData?.students?.reduce((sum: number, s: any) => sum + (s.stats?.totalSolved || 0), 0) || 0;
+  const topPerformers = batchData?.students?.filter((s: any) => (s.stats?.totalSolved || 0) > 50).length || 0;
+  const topStudents = batchData?.students?.sort((a: any, b: any) => (b.stats?.totalSolved || 0) - (a.stats?.totalSolved || 0)).slice(0, 3) || [];
+
+  return (
+    <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm animate-fade-in">
+      <CardHeader className={`${batchNumber === '2027' 
+        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 border-b border-blue-200 dark:border-blue-800'
+        : 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 border-b border-purple-200 dark:border-purple-800'
+      } rounded-t-2xl`}>
+        <CardTitle className="text-xl font-bold text-slate-800 dark:text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 ${batchNumber === '2027' 
+              ? 'bg-blue-100 dark:bg-blue-900' 
+              : 'bg-purple-100 dark:bg-purple-900'
+            } rounded-xl flex items-center justify-center`}>
+              <Building2 className={`h-6 w-6 ${batchNumber === '2027' 
+                ? 'text-blue-600 dark:text-blue-400' 
+                : 'text-purple-600 dark:text-purple-400'
+              }`} />
+            </div>
+            Batch {batchNumber}
+            <Badge className={`${batchNumber === '2027' 
+              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
+              : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
+            }`}>
+              {batchData?.totalStudents || 0} Students
+            </Badge>
+          </div>
+          <Link href={`/batch/${batchNumber}`}>
+            <Button variant="outline" size="sm" className="gap-2">
+              View Details <ExternalLink className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="space-y-6">
+          {/* Batch Stats Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 rounded-xl bg-slate-50 dark:bg-slate-700">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Problems</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalProblems}</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Active Students</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{batchData?.activeStudents || 0}</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Top Performers</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{topPerformers}</p>
+            </div>
+            <div className="text-center p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Avg Score</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {Math.round(totalProblems / (batchData?.totalStudents || 1))}
+              </p>
+            </div>
+          </div>
+
+          {/* Top Performers List */}
+          {topStudents.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-yellow-500" />
+                Top 3 Champions
+              </p>
+              <div className="space-y-3">
+                {topStudents.map((student: any, index: number) => (
+                  <div key={student.id} className={`flex items-center gap-3 p-3 rounded-xl ${
+                    index === 0 ? 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800' :
+                    index === 1 ? 'bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-700 dark:to-gray-700 border border-slate-200 dark:border-slate-600' :
+                    'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800'
+                  }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                      index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                      index === 1 ? 'bg-slate-400 text-slate-900' :
+                      'bg-amber-400 text-amber-900'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <Avatar className="w-10 h-10">
+                      {student.profilePhoto && (
+                        <AvatarImage src={student.profilePhoto} alt={student.name} />
+                      )}
+                      <AvatarFallback className="text-sm">
+                        {student.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{student.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">@{student.leetcodeUsername}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs font-bold ${
+                        index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                        index === 1 ? 'bg-slate-400 text-slate-900' :
+                        'bg-amber-400 text-amber-900'
+                      }`}>
+                        {student.stats?.totalSolved || 0}
+                      </Badge>
+                      {index === 0 && <Star className="h-4 w-4 text-yellow-500" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default function UniversityDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,19 +191,19 @@ export default function UniversityDashboard() {
     },
   });
 
-  const initBatch2027Mutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/init-batch-2027'),
+  const syncPhotosMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/sync/profile-photos'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/university'] });
       toast({
-        title: "Batch 2027 initialized",
-        description: "Batch 2027 students have been imported successfully.",
+        title: "Profile photos synced",
+        description: "Student profile photos have been updated from LeetCode.",
       });
     },
     onError: () => {
       toast({
-        title: "Import failed",
-        description: "Failed to import Batch 2027 students.",
+        title: "Photo sync failed",
+        description: "Failed to sync profile photos. Please try again.",
         variant: "destructive",
       });
     },
@@ -124,9 +275,9 @@ export default function UniversityDashboard() {
   // Calculate combined stats
   const combinedStats = {
     totalStudents: (data.batch2027?.totalStudents || 0) + (data.batch2028?.totalStudents || 0),
-    totalProblems: (data.batch2027?.totalProblems || 0) + (data.batch2028?.totalProblems || 0),
+    totalProblems: allStudents.reduce((sum, s) => sum + (s.stats?.totalSolved || 0), 0),
     activeStudents: (data.batch2027?.activeStudents || 0) + (data.batch2028?.activeStudents || 0),
-    topPerformers: (data.batch2027?.topPerformers || 0) + (data.batch2028?.topPerformers || 0)
+    topPerformers: allStudents.filter(s => (s.stats?.totalSolved || 0) > 50).length
   };
 
   return (
@@ -153,21 +304,21 @@ export default function UniversityDashboard() {
             
             <div className="flex gap-3 animate-slide-in-right">
               <Button 
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
+                onClick={() => syncPhotosMutation.mutate()}
+                disabled={syncPhotosMutation.isPending}
                 className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
                 variant="outline"
               >
-                <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-                Sync All Data
+                <Upload className={`mr-2 h-4 w-4 ${syncPhotosMutation.isPending ? 'animate-spin' : ''}`} />
+                Sync Photos
               </Button>
               <Button 
-                onClick={() => initBatch2027Mutation.mutate()}
-                disabled={initBatch2027Mutation.isPending}
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
                 className="bg-white text-indigo-600 hover:bg-white/90 font-semibold"
               >
-                <Upload className="mr-2 h-4 w-4" />
-                Import Batch 2027
+                <RefreshCw className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                Sync All Data
               </Button>
             </div>
           </div>
@@ -196,7 +347,7 @@ export default function UniversityDashboard() {
           <Card className="modern-card hover-lift bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-0 shadow-xl animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-6 text-center">
               <Target className="h-12 w-12 mx-auto mb-3 text-yellow-500" />
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{combinedStats.totalProblems}</h3>
+              <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{combinedStats.totalProblems.toLocaleString()}</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400">Problems Solved</p>
             </CardContent>
           </Card>
@@ -210,196 +361,57 @@ export default function UniversityDashboard() {
           </Card>
         </div>
 
+        {/* Weekly Progress Chart */}
+        <WeeklyProgressChart data={allStudents} />
+
         {/* Batch Comparison */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Batch 2027 */}
-          <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-t-2xl border-b border-blue-200 dark:border-blue-800">
-              <CardTitle className="text-xl font-bold text-slate-800 dark:text-white flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  Batch 2027
-                </div>
-                <Link href="/batch/2027">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    View Details <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Students</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.batch2027?.totalStudents || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Problems Solved</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.batch2027?.totalProblems || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.batch2027?.activeStudents || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Top Performers</p>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{data.batch2027?.topPerformers || 0}</p>
-                  </div>
-                </div>
-
-                {data.batch2027?.topStudents && data.batch2027.topStudents.length > 0 && (
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Top Performers</p>
-                    <div className="space-y-2">
-                      {data.batch2027.topStudents.slice(0, 3).map((student, index) => (
-                        <div key={student.id} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-700">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                            index === 0 ? 'bg-yellow-200 text-yellow-800' :
-                            index === 1 ? 'bg-slate-200 text-slate-800' :
-                            'bg-amber-200 text-amber-800'
-                          }`}>
-                            {index + 1}
-                          </div>
-                          <Avatar className="w-8 h-8">
-                            {student.profilePhoto && (
-                              <AvatarImage src={student.profilePhoto} alt={student.name} />
-                            )}
-                            <AvatarFallback className="text-xs">
-                              {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{student.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">@{student.leetcodeUsername}</p>
-                          </div>
-                          <Badge className="text-xs">{student.totalSolved || 0}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Batch 2028 */}
-          <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm animate-fade-in">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-t-2xl border-b border-purple-200 dark:border-purple-800">
-              <CardTitle className="text-xl font-bold text-slate-800 dark:text-white flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-xl flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  Batch 2028
-                </div>
-                <Link href="/batch/2028">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    View Details <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Students</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.batch2028?.totalStudents || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Problems Solved</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{data.batch2028?.totalProblems || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Active</p>
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{data.batch2028?.activeStudents || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Top Performers</p>
-                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{data.batch2028?.topPerformers || 0}</p>
-                  </div>
-                </div>
-
-                {data.batch2028?.topStudents && data.batch2028.topStudents.length > 0 && (
-                  <div>
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Top Performers</p>
-                    <div className="space-y-2">
-                      {data.batch2028.topStudents.slice(0, 3).map((student, index) => (
-                        <div key={student.id} className="flex items-center gap-3 p-2 rounded-lg bg-slate-50 dark:bg-slate-700">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                            index === 0 ? 'bg-yellow-200 text-yellow-800' :
-                            index === 1 ? 'bg-slate-200 text-slate-800' :
-                            'bg-amber-200 text-amber-800'
-                          }`}>
-                            {index + 1}
-                          </div>
-                          <Avatar className="w-8 h-8">
-                            {student.profilePhoto && (
-                              <AvatarImage src={student.profilePhoto} alt={student.name} />
-                            )}
-                            <AvatarFallback className="text-xs">
-                              {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{student.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">@{student.leetcodeUsername}</p>
-                          </div>
-                          <Badge className="text-xs">{student.totalSolved || 0}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <BatchProgressCard batchData={data.batch2027} batchNumber="2027" />
+          <BatchProgressCard batchData={data.batch2028} batchNumber="2028" />
         </div>
 
-        {/* All Students */}
+        {/* All Students Table */}
         <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm animate-fade-in">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-700 dark:to-gray-700 rounded-t-2xl border-b border-slate-200 dark:border-slate-600">
-            <CardTitle className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-600 rounded-xl flex items-center justify-center">
-                <Users className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+            <CardTitle className="text-2xl font-bold text-slate-800 dark:text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-600 rounded-xl flex items-center justify-center">
+                  <Users className="h-6 w-6 text-slate-600 dark:text-slate-300" />
+                </div>
+                All Students Directory
+                <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                  {filteredStudents.length} Students
+                </Badge>
               </div>
-              All Students
-              <Badge className="ml-auto bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                {filteredStudents.length} students
-              </Badge>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search students..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-white dark:bg-slate-800"
+                  />
+                </div>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-3 text-lg bg-white dark:bg-slate-800 border-0 shadow-lg rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Student</TableHead>
                     <TableHead>Batch</TableHead>
-                    <TableHead>Problems</TableHead>
+                    <TableHead>Problems Solved</TableHead>
                     <TableHead>Streak</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.slice(0, 20).map((student, index) => (
-                    <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50" style={{ animationDelay: `${index * 0.05}s` }}>
+                  {filteredStudents.map((student) => (
+                    <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="w-10 h-10">
@@ -407,7 +419,7 @@ export default function UniversityDashboard() {
                               <AvatarImage src={student.profilePhoto} alt={student.name} />
                             )}
                             <AvatarFallback className="text-sm">
-                              {student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                              {student.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div>
@@ -427,25 +439,25 @@ export default function UniversityDashboard() {
                       </TableCell>
                       <TableCell>
                         <Badge className="bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                          {student.totalSolved || 0}
+                          {student.stats?.totalSolved || 0}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Flame className="h-4 w-4 text-orange-500" />
-                          <span className="font-semibold text-slate-900 dark:text-white">{student.currentStreak || 0}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white">{student.streak || 0}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={`${
-                          (student.totalSolved || 0) > 50 ? 'status-excellent' :
-                          (student.totalSolved || 0) > 20 ? 'status-good' :
-                          (student.totalSolved || 0) > 0 ? 'status-active' :
+                          (student.stats?.totalSolved || 0) > 50 ? 'status-excellent' :
+                          (student.stats?.totalSolved || 0) > 20 ? 'status-good' :
+                          (student.stats?.totalSolved || 0) > 0 ? 'status-active' :
                           'status-underperforming'
                         }`}>
-                          {(student.totalSolved || 0) > 50 ? 'Excellent' :
-                           (student.totalSolved || 0) > 20 ? 'Good' :
-                           (student.totalSolved || 0) > 0 ? 'Active' :
+                          {(student.stats?.totalSolved || 0) > 50 ? 'Excellent' :
+                           (student.stats?.totalSolved || 0) > 20 ? 'Good' :
+                           (student.stats?.totalSolved || 0) > 0 ? 'Active' :
                            'Need Support'}
                         </Badge>
                       </TableCell>
