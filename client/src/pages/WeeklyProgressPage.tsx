@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, TrendingUp, TrendingDown, Calendar, Users, RefreshCw, Target } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, Calendar, Users, RefreshCw, Target, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 
@@ -221,79 +221,86 @@ export default function WeeklyProgressPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredData.map((progress, index) => (
-                <div 
+                <Card 
                   key={progress.student.leetcodeUsername}
-                  className="flex items-center justify-between p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-all duration-300 animate-slide-up"
+                  className="hover:shadow-lg transition-all duration-300 animate-slide-up border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
-                  <div className="flex items-center space-x-6">
-                    <Avatar className="w-16 h-16 ring-2 ring-white dark:ring-slate-700 shadow-lg">
-                      <AvatarFallback className="bg-gradient-primary text-white font-bold text-lg">
-                        {progress.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div>
-                      <h3 className="font-bold text-xl text-slate-900 dark:text-white">{progress.student.name}</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">@{progress.student.leetcodeUsername}</p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                          Last updated: {progress.realTimeData.lastUpdated}
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback className="bg-gradient-primary text-white font-semibold text-sm">
+                            {progress.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white leading-tight">{progress.student.name}</h3>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">@{progress.student.leetcodeUsername}</p>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right space-y-2">
-                    <div className="flex items-center gap-6">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-slate-900 dark:text-white">{progress.realTimeData.currentSolved}</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Current Total</div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-slate-900 dark:text-white">{progress.realTimeData.currentSolved}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Total</div>
                       </div>
-                      
-                      <div className="text-center">
-                        <div className={`text-2xl font-bold ${
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="text-center p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div className={`text-sm font-bold ${
                           progress.summary.averageWeeklyGrowth > 0 ? 'text-emerald-600 dark:text-emerald-400' :
                           progress.summary.averageWeeklyGrowth < 0 ? 'text-red-600 dark:text-red-400' :
                           'text-slate-600 dark:text-slate-400'
                         }`}>
                           {progress.summary.averageWeeklyGrowth > 0 ? '+' : ''}{progress.summary.averageWeeklyGrowth}
                         </div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Avg Growth</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Avg Growth</div>
                       </div>
-                      
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{progress.realTimeData.newIncrement}</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">New Progress</div>
+                      <div className="text-center p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div className="text-sm font-bold text-orange-600 dark:text-orange-400">{progress.realTimeData.newIncrement}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">New Progress</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-1 mb-3">
+                      <div className="text-center p-1 bg-blue-50 dark:bg-blue-900/20 rounded">
+                        <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">{progress.weeklyData.week1}</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400">W1</div>
+                      </div>
+                      <div className="text-center p-1 bg-green-50 dark:bg-green-900/20 rounded">
+                        <div className="text-xs font-semibold text-green-700 dark:text-green-300">{progress.weeklyData.week2}</div>
+                        <div className="text-xs text-green-600 dark:text-green-400">W2</div>
+                      </div>
+                      <div className="text-center p-1 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                        <div className="text-xs font-semibold text-yellow-700 dark:text-yellow-300">{progress.weeklyData.week3}</div>
+                        <div className="text-xs text-yellow-600 dark:text-yellow-400">W3</div>
+                      </div>
+                      <div className="text-center p-1 bg-purple-50 dark:bg-purple-900/20 rounded">
+                        <div className="text-xs font-semibold text-purple-700 dark:text-purple-300">{progress.weeklyData.week4}</div>
+                        <div className="text-xs text-purple-600 dark:text-purple-400">W4</div>
                       </div>
                     </div>
                     
                     <div className="flex gap-2">
-                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-1 text-xs font-semibold rounded-full">
-                        Week 1: {progress.weeklyData.week1}
-                      </Badge>
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-1 text-xs font-semibold rounded-full">
-                        Week 2: {progress.weeklyData.week2}
-                      </Badge>
-                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 px-2 py-1 text-xs font-semibold rounded-full">
-                        Week 3: {progress.weeklyData.week3}
-                      </Badge>
-                      <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 text-xs font-semibold rounded-full">
-                        Week 4: {progress.weeklyData.week4}
-                      </Badge>
-                    </div>
-                    
-                    <div className="mt-2">
-                      <Link href={`/student/${progress.student.leetcodeUsername}`}>
-                        <Button variant="outline" size="sm" className="gap-2">
+                      <Link href={`/student/${progress.student.leetcodeUsername}`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full text-xs">
                           View Profile
                         </Button>
                       </Link>
+                      <Button variant="outline" size="sm" className="text-xs" asChild>
+                        <a href={progress.student.leetcodeProfileLink} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </Button>
                     </div>
-                  </div>
-                </div>
+                    
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
+                      Updated: {progress.realTimeData.lastUpdated}
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 

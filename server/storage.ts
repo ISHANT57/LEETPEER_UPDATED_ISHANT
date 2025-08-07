@@ -2,6 +2,8 @@
 import { 
   type Student, 
   type InsertStudent,
+  type User,
+  type InsertUser,
   type DailyProgress,
   type InsertDailyProgress,
   type WeeklyTrend,
@@ -19,6 +21,7 @@ import {
   type BatchDashboardData,
   type UniversityDashboardData,
   students,
+  users,
   dailyProgress,
   weeklyTrends,
   badges,
@@ -30,6 +33,13 @@ import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
 
 export interface IStorage {
+  // Users
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+
   // Students
   getStudent(id: string): Promise<Student | undefined>;
   getStudentByUsername(username: string): Promise<Student | undefined>;
@@ -98,6 +108,32 @@ export interface IStorage {
 }
 
 export class PostgreSQLStorage implements IStorage {
+  // Users
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const result = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount > 0;
+  }
+
   // Students
   async getStudent(id: string): Promise<Student | undefined> {
     const result = await db.select().from(students).where(eq(students.id, id)).limit(1);

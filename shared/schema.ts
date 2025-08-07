@@ -3,6 +3,18 @@ import { pgTable, text, varchar, integer, timestamp, boolean, jsonb } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Users table for authentication
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: varchar("username", { length: 100 }).notNull().unique(),
+  password: varchar("password", { length: 255 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("student"), // 'student' or 'admin'
+  leetcodeUsername: varchar("leetcode_username", { length: 100}), // Only for students
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const students = pgTable("students", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -123,6 +135,12 @@ export const insertLeetcodeRealTimeDataSchema = createInsertSchema(leetcodeRealT
   lastSyncAt: true,
 });
 
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type Student = typeof students.$inferSelect;
 export type InsertStudent = z.infer<typeof insertStudentSchema>;
@@ -143,6 +161,9 @@ export type LeetcodeRealTimeData = typeof leetcodeRealTimeData.$inferSelect;
 export type InsertLeetcodeRealTimeData = z.infer<typeof insertLeetcodeRealTimeDataSchema>;
 
 export type AppSettings = typeof appSettings.$inferSelect;
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 // API Response types
 export interface LeetCodeStats {

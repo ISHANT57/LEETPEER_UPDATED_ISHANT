@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import authRouter from "./routes/auth";
+import { authenticateToken, requireRole, requireAdminOrOwnData } from "./middleware/auth";
 import { storage } from "./storage";
 import { leetCodeService } from "./services/leetcode";
 import { schedulerService } from "./services/scheduler";
@@ -11,8 +13,10 @@ import studentsData from "../attached_assets/students_1753783623487.json";
 import batch2027Data from "../attached_assets/batch_2027_real_students.json";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize students from JSON file
-  app.post("/api/init-students", async (req, res) => {
+  // Authentication routes (no auth required)
+  app.use("/api/auth", authRouter);
+  // Initialize students from JSON file (Admin only)
+  app.post("/api/init-students", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       let importedCount = 0;
       
@@ -39,8 +43,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Import Batch 2027 students
-  app.post("/api/init-batch-2027", async (req, res) => {
+  // Import Batch 2027 students (Admin only)
+  app.post("/api/init-batch-2027", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       let importedCount = 0;
       
@@ -199,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get student dashboard data
-  app.get("/api/dashboard/student/:username", async (req, res) => {
+  app.get("/api/dashboard/student/:username", authenticateToken, requireAdminOrOwnData, async (req, res) => {
     try {
       const { username } = req.params;
       const student = await storage.getStudentByUsername(username);
@@ -219,8 +223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get admin dashboard data
-  app.get("/api/dashboard/admin", async (req, res) => {
+  // Get admin dashboard data (Admin only)
+  app.get("/api/dashboard/admin", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       const dashboardData = await storage.getAdminDashboard();
       res.json(dashboardData);
@@ -291,8 +295,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all students with basic stats for directory
-  app.get("/api/students/all", async (req, res) => {
+  // Get all students with basic stats for directory (Admin only)
+  app.get("/api/students/all", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       const adminData = await storage.getAdminDashboard();
       res.json(adminData.students);
@@ -347,8 +351,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync single student
-  app.post("/api/sync/student/:id", async (req, res) => {
+  // Sync single student (Admin only)
+  app.post("/api/sync/student/:id", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       const { id } = req.params;
       const success = await leetCodeService.syncStudentData(id);
@@ -364,8 +368,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync all students
-  app.post("/api/sync/all", async (req, res) => {
+  // Sync all students (Admin only)
+  app.post("/api/sync/all", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       const result = await schedulerService.manualSync();
       res.json(result);
@@ -375,8 +379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync profile photos from LeetCode
-  app.post("/api/sync/profile-photos", async (req, res) => {
+  // Sync profile photos from LeetCode (Admin only)
+  app.post("/api/sync/profile-photos", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
       const result = await leetCodeService.syncAllProfilePhotos();
       res.json({ 
@@ -568,6 +572,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Analytics error:', error);
       res.status(500).json({ error: "Failed to fetch analytics data" });
+    }
+  });
+
+  // Data export endpoint (Admin only)
+  app.post("/api/export", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const { type, format, batches } = req.body;
+      
+      // Validate inputs
+      if (!["students", "progress", "complete"].includes(type)) {
+        return res.status(400).json({ error: "Invalid export type" });
+      }
+      if (!["csv", "excel"].includes(format)) {
+        return res.status(400).json({ error: "Invalid export format" });
+      }
+      if (!Array.isArray(batches) || batches.some(b => !["2027", "2028"].includes(b))) {
+        return res.status(400).json({ error: "Invalid batches selection" });
+      }
+
+      // Get data based on type and batches
+      let exportData: any[] = [];
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      if (type === "students" || type === "complete") {
+        for (const batch of batches) {
+          const batchData = await storage.getBatchDashboard(batch);
+          const studentsData = batchData.students.map((student: any) => ({
+            batch,
+            name: student.name,
+            leetcodeUsername: student.leetcodeUsername,
+            profileLink: student.leetcodeProfileLink,
+            totalProblems: student.stats.totalSolved,
+            easyProblems: student.stats.easySolved,
+            mediumProblems: student.stats.mediumSolved,
+            hardProblems: student.stats.hardSolved,
+            acceptanceRate: student.stats.acceptanceRate,
+            currentStreak: student.currentStreak,
+            maxStreak: student.maxStreak,
+            activeDays: student.totalActiveDays,
+            badgeCount: student.badges?.length || 0,
+            lastSync: student.lastSync || 'Never'
+          }));
+          exportData.push(...studentsData);
+        }
+      }
+
+      // Convert to CSV format
+      if (exportData.length === 0) {
+        return res.status(400).json({ error: "No data to export" });
+      }
+
+      const headers = Object.keys(exportData[0]);
+      const csvContent = [
+        headers.join(','),
+        ...exportData.map(row => 
+          headers.map(header => 
+            typeof row[header] === 'string' && row[header].includes(',') 
+              ? `"${row[header]}"` 
+              : row[header]
+          ).join(',')
+        )
+      ].join('\n');
+
+      const filename = `leetcode_export_${type}_${timestamp}.${format}`;
+      
+      res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      if (format === 'csv') {
+        res.send(csvContent);
+      } else {
+        // For Excel, we'll just send CSV for now (would need xlsx library for proper Excel)
+        res.send(csvContent);
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      res.status(500).json({ error: "Failed to export data" });
     }
   });
 
