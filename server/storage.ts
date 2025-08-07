@@ -1113,11 +1113,29 @@ export class PostgreSQLStorage implements IStorage {
 
         const status = this.calculateStatus(stats.totalSolved, currentWeeklyProgress);
 
-        // Get real-time data if available, fallback to calculated values
+        // PRIORITY: Use real-time LeetCode data when available
         const realTimeData = await this.getLeetcodeRealTimeData(student.id);
-        const maxStreak = realTimeData?.maxStreak ?? await this.calculateMaxStreak(student.id);
-        const totalActiveDays = realTimeData?.totalActiveDays ?? await this.calculateTotalActiveDays(student.id);
-        const currentStreak = realTimeData?.currentStreak ?? this.calculateStreakFromProgress(recentProgressResult);
+        let maxStreak = 0;
+        let totalActiveDays = 0;
+        let currentStreak = 0;
+
+        if (realTimeData) {
+          // Use real-time data from LeetCode API
+          maxStreak = realTimeData.maxStreak || 0;
+          totalActiveDays = realTimeData.totalActiveDays || 0;
+          currentStreak = realTimeData.currentStreak || 0;
+        }
+        
+        // If no real-time data or values are 0, calculate from progress data
+        if (maxStreak === 0) {
+          maxStreak = await this.calculateMaxStreak(student.id);
+        }
+        if (totalActiveDays === 0) {
+          totalActiveDays = await this.calculateTotalActiveDays(student.id);
+        }
+        if (currentStreak === 0) {
+          currentStreak = this.calculateStreakFromProgress(recentProgressResult);
+        }
 
         return {
           ...student,

@@ -361,17 +361,19 @@ export default function BatchDashboard() {
                       <TableCell className="py-4">
                         <div className="flex items-center gap-2 px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full font-bold">
                           <Flame className="h-4 w-4" />
-                          <span>{student.streak || 0}</span>
+                          <span className="text-lg font-extrabold">{student.streak || 0}</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
-                        <div className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-bold">
-                          {student.maxStreak || 0}
+                        <div className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full font-bold">
+                          <span className="text-lg font-extrabold">{student.maxStreak || 0}</span>
+                          <span className="text-xs">days</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
-                        <div className="inline-flex items-center px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-full font-bold">
-                          {student.totalActiveDays || 0}
+                        <div className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full font-bold">
+                          <span className="text-lg font-extrabold">{student.totalActiveDays || 0}</span>
+                          <span className="text-xs">days</span>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">
