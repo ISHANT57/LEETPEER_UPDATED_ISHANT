@@ -205,8 +205,8 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="space-y-4">
-              {data.leaderboard.slice(0, 5).map((entry, index) => (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {data.leaderboard.map((entry, index) => (
                 <div 
                   key={entry.student.id}
                   className={`flex items-center justify-between p-4 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl animate-slide-up ${

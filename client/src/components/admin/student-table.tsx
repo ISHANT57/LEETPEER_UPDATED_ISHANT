@@ -12,7 +12,7 @@ interface StudentTableProps {
 
 export default function StudentTable({ data }: StudentTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto max-h-96 overflow-y-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -29,7 +29,7 @@ export default function StudentTable({ data }: StudentTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.students.slice(0, 10).map((student) => (
+          {data.students.map((student) => (
             <TableRow key={student.id}>
               <TableCell>
                 <div className="flex items-center space-x-3">
