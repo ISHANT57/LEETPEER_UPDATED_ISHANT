@@ -8,29 +8,38 @@ import { Search, TrendingUp, TrendingDown, Calendar, Users, RefreshCw, Target } 
 import { useState } from "react";
 import { Link } from "wouter";
 
-interface WeeklyProgress {
+interface WeeklyProgressData {
   student: {
-    id: string;
     name: string;
     leetcodeUsername: string;
-    profilePhoto?: string;
-    batch: string;
+    leetcodeProfileLink: string;
   };
-  weekStarting: string;
-  problemsSolved: number;
-  improvement: number;
-  streakDays: number;
-  difficultyBreakdown: {
-    easy: number;
-    medium: number;
-    hard: number;
+  weeklyData: {
+    week1: number;
+    week2: number;
+    week3: number;
+    week4: number;
+  };
+  progressIncrements: {
+    week2Progress: number;
+    week3Progress: number;
+    week4Progress: number;
+  };
+  realTimeData: {
+    currentSolved: number;
+    newIncrement: number;
+    lastUpdated: string;
+  };
+  summary: {
+    totalScore: number;
+    averageWeeklyGrowth: number;
   };
 }
 
 export default function WeeklyProgressPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: weeklyData, isLoading, error, refetch } = useQuery<WeeklyProgress[]>({
+  const { data: weeklyData, isLoading, error, refetch } = useQuery<WeeklyProgressData[]>({
     queryKey: ['/api/weekly-progress'],
   });
 
@@ -42,10 +51,10 @@ export default function WeeklyProgressPage() {
   // Calculate summary stats
   const summaryStats = weeklyData ? {
     totalStudents: weeklyData.length,
-    totalProblems: weeklyData.reduce((sum, p) => sum + p.problemsSolved, 0),
-    averageProblems: Math.round(weeklyData.reduce((sum, p) => sum + p.problemsSolved, 0) / weeklyData.length),
-    improving: weeklyData.filter(p => p.improvement > 0).length,
-    declining: weeklyData.filter(p => p.improvement < 0).length
+    totalProblems: weeklyData.reduce((sum, p) => sum + p.realTimeData.currentSolved, 0),
+    averageProblems: Math.round(weeklyData.reduce((sum, p) => sum + p.realTimeData.currentSolved, 0) / weeklyData.length),
+    improving: weeklyData.filter(p => p.summary.averageWeeklyGrowth > 0).length,
+    declining: weeklyData.filter(p => p.summary.averageWeeklyGrowth < 0).length
   } : null;
 
   if (error) {
@@ -215,15 +224,12 @@ export default function WeeklyProgressPage() {
             <div className="space-y-4">
               {filteredData.map((progress, index) => (
                 <div 
-                  key={progress.student.id}
+                  key={progress.student.leetcodeUsername}
                   className="flex items-center justify-between p-6 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg transition-all duration-300 animate-slide-up"
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   <div className="flex items-center space-x-6">
                     <Avatar className="w-16 h-16 ring-2 ring-white dark:ring-slate-700 shadow-lg">
-                      {progress.student.profilePhoto && (
-                        <AvatarImage src={progress.student.profilePhoto} alt={progress.student.name} />
-                      )}
                       <AvatarFallback className="bg-gradient-primary text-white font-bold text-lg">
                         {progress.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </AvatarFallback>
@@ -233,15 +239,8 @@ export default function WeeklyProgressPage() {
                       <h3 className="font-bold text-xl text-slate-900 dark:text-white">{progress.student.name}</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400">@{progress.student.leetcodeUsername}</p>
                       <div className="flex items-center gap-4 mt-2">
-                        <Badge className={`${
-                          progress.student.batch === '2027' 
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' 
-                            : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
-                        }`}>
-                          Batch {progress.student.batch}
-                        </Badge>
                         <div className="text-sm text-slate-500 dark:text-slate-400">
-                          Week of {new Date(progress.weekStarting).toLocaleDateString()}
+                          Last updated: {progress.realTimeData.lastUpdated}
                         </div>
                       </div>
                     </div>
@@ -250,36 +249,39 @@ export default function WeeklyProgressPage() {
                   <div className="text-right space-y-2">
                     <div className="flex items-center gap-6">
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-slate-900 dark:text-white">{progress.problemsSolved}</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Problems Solved</div>
+                        <div className="text-3xl font-bold text-slate-900 dark:text-white">{progress.realTimeData.currentSolved}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Current Total</div>
                       </div>
                       
                       <div className="text-center">
                         <div className={`text-2xl font-bold ${
-                          progress.improvement > 0 ? 'text-emerald-600 dark:text-emerald-400' :
-                          progress.improvement < 0 ? 'text-red-600 dark:text-red-400' :
+                          progress.summary.averageWeeklyGrowth > 0 ? 'text-emerald-600 dark:text-emerald-400' :
+                          progress.summary.averageWeeklyGrowth < 0 ? 'text-red-600 dark:text-red-400' :
                           'text-slate-600 dark:text-slate-400'
                         }`}>
-                          {progress.improvement > 0 ? '+' : ''}{progress.improvement}
+                          {progress.summary.averageWeeklyGrowth > 0 ? '+' : ''}{progress.summary.averageWeeklyGrowth}
                         </div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Change</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">Avg Growth</div>
                       </div>
                       
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{progress.streakDays}</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400">Streak Days</div>
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{progress.realTimeData.newIncrement}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">New Progress</div>
                       </div>
                     </div>
                     
                     <div className="flex gap-2">
-                      <Badge className="difficulty-easy px-2 py-1 text-xs font-semibold rounded-full">
-                        Easy: {progress.difficultyBreakdown.easy}
+                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-1 text-xs font-semibold rounded-full">
+                        Week 1: {progress.weeklyData.week1}
                       </Badge>
-                      <Badge className="difficulty-medium px-2 py-1 text-xs font-semibold rounded-full">
-                        Medium: {progress.difficultyBreakdown.medium}
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-2 py-1 text-xs font-semibold rounded-full">
+                        Week 2: {progress.weeklyData.week2}
                       </Badge>
-                      <Badge className="difficulty-hard px-2 py-1 text-xs font-semibold rounded-full">
-                        Hard: {progress.difficultyBreakdown.hard}
+                      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 px-2 py-1 text-xs font-semibold rounded-full">
+                        Week 3: {progress.weeklyData.week3}
+                      </Badge>
+                      <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 px-2 py-1 text-xs font-semibold rounded-full">
+                        Week 4: {progress.weeklyData.week4}
                       </Badge>
                     </div>
                     

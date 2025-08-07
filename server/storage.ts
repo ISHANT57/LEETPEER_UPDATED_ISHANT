@@ -534,7 +534,7 @@ export class PostgreSQLStorage implements IStorage {
         // If no current week data, calculate from daily progress this week
         let weeklyScore = 0;
         if (currentWeekTrend) {
-          weeklyScore = currentWeekTrend.problemsThisWeek || 0;
+          weeklyScore = currentWeekTrend.weeklyIncrement || 0;
         } else {
           // Calculate from daily progress entries for this week
           const weekProgress = await db.select().from(dailyProgress)
@@ -916,7 +916,7 @@ export class PostgreSQLStorage implements IStorage {
         // If no current week data, calculate from daily progress this week
         let weeklyScore = 0;
         if (currentWeekTrend) {
-          weeklyScore = currentWeekTrend.problemsThisWeek || 0;
+          weeklyScore = currentWeekTrend.weeklyIncrement || 0;
         } else {
           // Calculate from daily progress entries for this week
           const weekProgress = await db.select().from(dailyProgress)
