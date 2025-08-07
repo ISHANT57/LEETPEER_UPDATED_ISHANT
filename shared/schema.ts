@@ -252,7 +252,15 @@ export interface UniversityDashboardData {
     avgMaxStreak: number;
     universityLeaderboard: {
       rank: number;
-      student: Student;
+      student: {
+        id: string;
+        name: string;
+        leetcodeUsername: string;
+        createdAt: Date | null;
+        leetcodeProfileLink: string;
+        profilePhoto: string | null;
+        batch: string;
+      };
       totalSolved: number;
       batch: string;
     }[];

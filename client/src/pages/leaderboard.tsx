@@ -327,7 +327,7 @@ export default function Leaderboard() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="space-y-1">
-                  {(universityLeaderboard || []).map((entry: any, index: number) => (
+                  {Array.isArray(universityLeaderboard) && universityLeaderboard.map((entry: any, index: number) => (
                     <div 
                       key={entry.student.id}
                       className="flex items-center justify-between p-6 transition-all duration-300 hover:shadow-lg hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -363,7 +363,7 @@ export default function Leaderboard() {
                       
                       <div className="text-right">
                         <div className="px-4 py-2 rounded-full font-bold text-xl shadow-lg bg-gradient-to-r from-indigo-400 to-purple-500 text-white">
-                          {entry.weeklyScore}
+                          {entry.totalSolved}
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">total solved</p>
                       </div>

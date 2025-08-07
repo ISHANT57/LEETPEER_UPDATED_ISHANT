@@ -71,11 +71,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/analytics">
-        <ProtectedRoute requiredRole="admin">
-          <AnalyticsDashboard />
-        </ProtectedRoute>
-      </Route>
+
       
       <Route path="/weekly-progress">
         <ProtectedRoute>

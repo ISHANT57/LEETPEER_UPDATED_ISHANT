@@ -27,6 +27,12 @@ const getNavigation = (userRole: "student" | "admin" | null) => {
 
   const adminNavigation = [
     {
+      name: "Admin Dashboard",
+      href: "/admin",
+      icon: Code,
+      roles: ["admin"],
+    },
+    {
       name: "All Students",
       href: "/",
       icon: Users,
@@ -48,18 +54,6 @@ const getNavigation = (userRole: "student" | "admin" | null) => {
       name: "Batch 2028",
       href: "/batch/2028",
       icon: BookOpen,
-      roles: ["admin"],
-    },
-    {
-      name: "Admin Dashboard",
-      href: "/admin",
-      icon: Code,
-      roles: ["admin"],
-    },
-    {
-      name: "Analytics Dashboard",
-      href: "/analytics",
-      icon: BarChart3,
       roles: ["admin"],
     },
     {

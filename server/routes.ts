@@ -146,7 +146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           streak: currentStreak,
           maxStreak: maxStreak,
           totalActiveDays: totalActiveDays,
-          weeklyProgress: weeklyData?.currentWeekProblems || 0,
+          weeklyProgress: weeklyData?.week4Score || 0,
           lastSubmissionDate: latestProgress?.date,
           status: latestProgress ? 'Synced' : 'Pending'
         };

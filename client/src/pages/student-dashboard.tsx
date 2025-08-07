@@ -187,7 +187,6 @@ export default function StudentDashboard() {
         
         <ActivityHeatmap data={data} />
         <RecentBadges data={data} />
-        <DailyActivity data={data} />
       </div>
     </div>
   );

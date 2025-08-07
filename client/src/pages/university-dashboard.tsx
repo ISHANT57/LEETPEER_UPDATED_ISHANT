@@ -15,38 +15,7 @@ import { Link } from 'wouter';
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar } from 'recharts';
 
 // Weekly Progress Chart Component
-const WeeklyProgressChart = ({ data }: { data: any[] }) => {
-  const chartData = data.slice(0, 10).map((student, index) => ({
-    name: student.name.split(' ')[0],
-    problems: student.stats?.totalSolved || 0,
-    streak: student.streak || 0,
-    rank: index + 1
-  }));
 
-  return (
-    <Card className="modern-card border-0 shadow-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm">
-      <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-t-2xl border-b border-green-200 dark:border-green-800">
-        <CardTitle className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-xl flex items-center justify-center">
-            <BarChart className="h-6 w-6 text-green-600 dark:text-green-400" />
-          </div>
-          Weekly Top Performers
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6">
-        <ResponsiveContainer width="100%" height={300}>
-          <RechartsBarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="problems" fill="#10b981" />
-          </RechartsBarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  );
-};
 
 // Batch Progress Component
 const BatchProgressCard = ({ batchData, batchNumber }: { batchData: any; batchNumber: string }) => {
@@ -361,8 +330,7 @@ export default function UniversityDashboard() {
           </Card>
         </div>
 
-        {/* Weekly Progress Chart */}
-        <WeeklyProgressChart data={allStudents} />
+
 
         {/* Batch Comparison */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -39,6 +39,83 @@ export const BADGE_TYPES = {
     icon: 'fas fa-calendar-check',
     gradient: 'from-blue-400 to-indigo-500',
     emoji: '🧱'
+  },
+  speed_demon: {
+    title: '⚡ Speed Demon',
+    description: '50+ problems solved this week',
+    icon: 'fas fa-bolt',
+    gradient: 'from-yellow-500 to-red-500',
+    emoji: '⚡'
+  },
+  problem_hunter: {
+    title: '🎯 Problem Hunter',
+    description: '200+ total problems solved',
+    icon: 'fas fa-crosshairs',
+    gradient: 'from-teal-400 to-cyan-500',
+    emoji: '🎯'
+  },
+  night_owl: {
+    title: '🦉 Night Owl',
+    description: 'Coding streak after midnight',
+    icon: 'fas fa-moon',
+    gradient: 'from-purple-600 to-indigo-600',
+    emoji: '🦉'
+  },
+  early_bird: {
+    title: '🐦 Early Bird',
+    description: 'Morning coding sessions',
+    icon: 'fas fa-sun',
+    gradient: 'from-yellow-300 to-orange-400',
+    emoji: '🐦'
+  },
+  hard_mode: {
+    title: '🔥 Hard Mode',
+    description: '25+ hard problems solved',
+    icon: 'fas fa-skull',
+    gradient: 'from-red-500 to-purple-600',
+    emoji: '🔥'
+  },
+  perfectionist: {
+    title: '💎 Perfectionist',
+    description: '95%+ submission acceptance rate',
+    icon: 'fas fa-gem',
+    gradient: 'from-pink-400 to-purple-500',
+    emoji: '💎'
+  },
+  marathon_runner: {
+    title: '🏃 Marathon Runner',
+    description: '14-day consecutive streak',
+    icon: 'fas fa-running',
+    gradient: 'from-green-500 to-teal-500',
+    emoji: '🏃'
+  },
+  algorithm_ace: {
+    title: '🧮 Algorithm Ace',
+    description: '100+ medium problems solved',
+    icon: 'fas fa-calculator',
+    gradient: 'from-blue-500 to-purple-600',
+    emoji: '🧮'
+  },
+  data_structures_master: {
+    title: '🏗️ Data Structures Master',
+    description: 'Mastered all data structure categories',
+    icon: 'fas fa-building',
+    gradient: 'from-gray-400 to-blue-500',
+    emoji: '🏗️'
+  },
+  weekly_warrior: {
+    title: '⚔️ Weekly Warrior',
+    description: 'Top 3 performer of the week',
+    icon: 'fas fa-sword',
+    gradient: 'from-orange-400 to-red-600',
+    emoji: '⚔️'
+  },
+  rising_star: {
+    title: '⭐ Rising Star',
+    description: '50% improvement in one week',
+    icon: 'fas fa-star',
+    gradient: 'from-yellow-400 to-pink-500',
+    emoji: '⭐'
   }
 } as const;
 

@@ -555,39 +555,38 @@ export class PostgreSQLStorage implements IStorage {
   async getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>> {
     const students = await this.getAllStudents();
     
-    // Get the current week start date (Monday)
-    const today = new Date();
-    const currentWeekStart = new Date(today);
-    currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Monday
-    currentWeekStart.setHours(0, 0, 0, 0);
-    const weekStartString = currentWeekStart.toISOString().split('T')[0];
+    // Get weekly progress data directly from the weeklyProgressData table
+    const allWeeklyProgressData = await this.getAllWeeklyProgressData();
     
-    const studentsWithScores = await Promise.all(
-      students.map(async (student) => {
-        // Get current week's trend data for actual weekly score
-        const currentWeekTrend = await this.getWeeklyTrend(student.id, weekStartString);
+    const studentsWithScores = students.map((student) => {
+      // Find the student's weekly progress data
+      const weeklyProgress = allWeeklyProgressData.find(wp => wp.studentId === student.id);
+      
+      let weeklyScore = 0;
+      if (weeklyProgress) {
+        // Calculate the latest week's progress from the week scores
+        const week1 = weeklyProgress.week1Score || 0;
+        const week2 = weeklyProgress.week2Score || 0;
+        const week3 = weeklyProgress.week3Score || 0;
+        const week4 = weeklyProgress.week4Score || 0;
         
-        // If no current week data, calculate from daily progress this week
-        let weeklyScore = 0;
-        if (currentWeekTrend) {
-          weeklyScore = currentWeekTrend.weeklyIncrement || 0;
+        // The weekly score is the increment from the previous week
+        if (week4 > 0 && week3 > 0) {
+          weeklyScore = Math.max(0, week4 - week3);
+        } else if (week3 > 0 && week2 > 0) {
+          weeklyScore = Math.max(0, week3 - week2);
+        } else if (week2 > 0 && week1 > 0) {
+          weeklyScore = Math.max(0, week2 - week1);
         } else {
-          // Calculate from daily progress entries for this week
-          const weekProgress = await db.select().from(dailyProgress)
-            .where(and(
-              eq(dailyProgress.studentId, student.id),
-              sql`date >= ${weekStartString}`
-            ));
-          
-          weeklyScore = weekProgress.reduce((sum, progress) => sum + (progress.dailyIncrement || 0), 0);
+          weeklyScore = week1; // First week
         }
-        
-        return {
-          student,
-          weeklyScore
-        };
-      })
-    );
+      }
+      
+      return {
+        student,
+        weeklyScore
+      };
+    });
 
     return studentsWithScores
       .sort((a, b) => b.weeklyScore - a.weeklyScore)
@@ -962,7 +961,7 @@ export class PostgreSQLStorage implements IStorage {
       }));
   }
 
-  async getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number; batch: string }>> {
+  async getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; totalSolved: number; batch: string }>> {
     const allStudents = await this.getAllStudents();
     
     const studentsWithScores = await Promise.all(
@@ -976,17 +975,27 @@ export class PostgreSQLStorage implements IStorage {
         
         return {
           student,
-          weeklyScore: latestProgress?.totalSolved || 0, // Using weeklyScore field to store total solved
+          totalSolved: latestProgress?.totalSolved || 0,
           batch: student.batch
         };
       })
     );
 
     return studentsWithScores
-      .sort((a, b) => b.weeklyScore - a.weeklyScore)
+      .sort((a, b) => b.totalSolved - a.totalSolved)
       .map((item, index) => ({
         rank: index + 1,
-        ...item
+        student: {
+          id: item.student.id,
+          name: item.student.name,
+          leetcodeUsername: item.student.leetcodeUsername,
+          createdAt: item.student.createdAt,
+          leetcodeProfileLink: item.student.leetcodeProfileLink,
+          profilePhoto: item.student.profilePhoto,
+          batch: item.student.batch,
+        },
+        totalSolved: item.totalSolved,
+        batch: item.batch
       }));
   }
 
