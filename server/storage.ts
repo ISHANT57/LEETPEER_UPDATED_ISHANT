@@ -92,7 +92,7 @@ export interface IStorage {
   getUniversityDashboard(): Promise<UniversityDashboardData>;
   getLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
   getBatchLeaderboard(batch: string): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>>;
-  getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; totalSolved: number; batch: string }>>;
+  getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number; batch: string }>>;
 
   // Batch-specific methods
   getStudentsByBatch(batch: string): Promise<Student[]>;
@@ -937,36 +937,19 @@ export class PostgreSQLStorage implements IStorage {
   async getBatchLeaderboard(batch: string): Promise<Array<{ rank: number; student: Student; weeklyScore: number }>> {
     const batchStudents = await this.getStudentsByBatch(batch);
     
-    // Get the current week start date (Monday)
-    const today = new Date();
-    const currentWeekStart = new Date(today);
-    currentWeekStart.setDate(today.getDate() - today.getDay() + 1); // Monday
-    currentWeekStart.setHours(0, 0, 0, 0);
-    const weekStartString = currentWeekStart.toISOString().split('T')[0];
-    
     const studentsWithScores = await Promise.all(
       batchStudents.map(async (student) => {
-        // Get current week's trend data for actual weekly score
-        const currentWeekTrend = await this.getWeeklyTrend(student.id, weekStartString);
+        // Get latest total solved count (using weeklyScore field for total problems)
+        const latestProgressResult = await db.select().from(dailyProgress)
+          .where(eq(dailyProgress.studentId, student.id))
+          .orderBy(desc(dailyProgress.date))
+          .limit(1);
         
-        // If no current week data, calculate from daily progress this week
-        let weeklyScore = 0;
-        if (currentWeekTrend) {
-          weeklyScore = currentWeekTrend.weeklyIncrement || 0;
-        } else {
-          // Calculate from daily progress entries for this week
-          const weekProgress = await db.select().from(dailyProgress)
-            .where(and(
-              eq(dailyProgress.studentId, student.id),
-              sql`date >= ${weekStartString}`
-            ));
-          
-          weeklyScore = weekProgress.reduce((sum, progress) => sum + (progress.dailyIncrement || 0), 0);
-        }
+        const latestProgress = latestProgressResult[0];
         
         return {
           student,
-          weeklyScore
+          weeklyScore: latestProgress?.totalSolved || 0 // Using weeklyScore field to store total solved
         };
       })
     );
@@ -979,7 +962,7 @@ export class PostgreSQLStorage implements IStorage {
       }));
   }
 
-  async getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; totalSolved: number; batch: string }>> {
+  async getUniversityLeaderboard(): Promise<Array<{ rank: number; student: Student; weeklyScore: number; batch: string }>> {
     const allStudents = await this.getAllStudents();
     
     const studentsWithScores = await Promise.all(
@@ -993,14 +976,14 @@ export class PostgreSQLStorage implements IStorage {
         
         return {
           student,
-          totalSolved: latestProgress?.totalSolved || 0,
+          weeklyScore: latestProgress?.totalSolved || 0, // Using weeklyScore field to store total solved
           batch: student.batch
         };
       })
     );
 
     return studentsWithScores
-      .sort((a, b) => b.totalSolved - a.totalSolved)
+      .sort((a, b) => b.weeklyScore - a.weeklyScore)
       .map((item, index) => ({
         rank: index + 1,
         ...item

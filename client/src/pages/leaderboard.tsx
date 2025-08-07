@@ -77,10 +77,10 @@ const LeaderboardEntry = ({ entry, index }: { entry: any; index: number }) => {
       
       <div className="text-right">
         <div className={`px-4 py-2 rounded-full font-bold text-xl shadow-lg ${getScoreBadgeStyle(entry.rank)}`}>
-          {entry.weeklyScore !== undefined ? `+${entry.weeklyScore}` : entry.totalSolved || 0}
+          {entry.weeklyScore}
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          {entry.weeklyScore !== undefined ? 'this week' : 'total solved'}
+          {entry.weeklyScore !== undefined && entry.weeklyScore <= 50 ? 'this week' : 'total solved'}
         </p>
       </div>
     </div>
@@ -111,7 +111,7 @@ const BatchLeaderboard = ({ data, batchNumber, color }: { data: any[]; batchNumb
           <div className={`w-10 h-10 ${classes.icon} rounded-xl flex items-center justify-center`}>
             <Trophy className="h-6 w-6" />
           </div>
-          Batch {batchNumber} Champions
+          Batch {batchNumber} Rankings
           <Badge className={classes.badge}>
             {data?.length || 0} Students
           </Badge>
@@ -363,7 +363,7 @@ export default function Leaderboard() {
                       
                       <div className="text-right">
                         <div className="px-4 py-2 rounded-full font-bold text-xl shadow-lg bg-gradient-to-r from-indigo-400 to-purple-500 text-white">
-                          {entry.totalSolved}
+                          {entry.weeklyScore}
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">total solved</p>
                       </div>
