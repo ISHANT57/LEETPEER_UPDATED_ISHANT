@@ -113,11 +113,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = async (username: string, password: string) => {
-    await loginMutation.mutateAsync({ username, password });
+    const result = await loginMutation.mutateAsync({ username, password });
+    // Redirect based on user role
+    setTimeout(() => {
+      if (result.user.role === 'student') {
+        window.location.href = `/student/${result.user.leetcodeUsername}`;
+      } else {
+        window.location.href = '/admin';
+      }
+    }, 100);
+    return result;
   };
 
   const register = async (data: RegisterData) => {
-    await registerMutation.mutateAsync(data);
+    const result = await registerMutation.mutateAsync(data);
+    // Redirect based on user role
+    setTimeout(() => {
+      if (result.user.role === 'student') {
+        window.location.href = `/student/${result.user.leetcodeUsername}`;
+      } else {
+        window.location.href = '/admin';
+      }
+    }, 100);
+    return result;
   };
 
   const logout = () => {
