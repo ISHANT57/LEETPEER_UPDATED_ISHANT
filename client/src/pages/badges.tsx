@@ -196,7 +196,7 @@ export default function BadgesPage() {
                   <TabsTrigger value="all" className="rounded-lg">All Types</TabsTrigger>
                   {badgeTypes.map((type) => (
                     <TabsTrigger key={type} value={type} className="rounded-lg">
-                      {BADGE_TYPES[type].displayName}
+                      {BADGE_TYPES[type as keyof typeof BADGE_TYPES]?.title}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -222,7 +222,7 @@ export default function BadgesPage() {
                             badge.badgeType === 'STREAK_MILESTONE' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300' :
                             'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
                           }`}>
-                            {BADGE_TYPES[badge.badgeType as keyof typeof BADGE_TYPES]?.displayName || badge.badgeType}
+                            {BADGE_TYPES[badge.badgeType as keyof typeof BADGE_TYPES]?.title || badge.badgeType}
                           </Badge>
                         </div>
                       </CardHeader>
@@ -245,7 +245,7 @@ export default function BadgesPage() {
                         </div>
                         
                         <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Earned on {new Date(badge.earnedAt).toLocaleDateString()}
+                          Earned on {badge.earnedDate ? new Date(badge.earnedDate).toLocaleDateString() : 'Unknown date'}
                         </div>
                       </CardContent>
                     </Card>

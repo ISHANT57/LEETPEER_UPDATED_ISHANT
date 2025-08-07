@@ -31,6 +31,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
 export interface IStorage {
   // Users
@@ -688,6 +689,148 @@ export class PostgreSQLStorage implements IStorage {
     const result = await db.delete(leetcodeRealTimeData)
       .where(eq(leetcodeRealTimeData.studentId, studentId));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Enhanced badge awarding system with comprehensive criteria
+  async awardBadges(studentId: string): Promise<void> {
+    const student = await this.getStudent(studentId);
+    if (!student) return;
+
+    const latestProgress = await this.getLatestDailyProgress(studentId);
+    if (!latestProgress) return;
+
+    const streak = await this.calculateStreak(studentId);
+    const badgesToAward: { type: string; title: string; description: string; earnedDate: Date }[] = [];
+
+    // Get weekly progress for comprehensive badge calculations
+    const recentProgress = await this.getStudentDailyProgress(studentId, 30);
+    const weeklyProgress = recentProgress.slice(0, 7);
+    const weeklyTotal = weeklyProgress.reduce((sum, p) => sum + p.dailyIncrement, 0);
+
+    // 1. Streak-based badges
+    if (streak >= 7 && !(await this.hasStudentEarnedBadge(studentId, 'streak_master'))) {
+      badgesToAward.push({
+        type: 'streak_master',
+        title: '🧐 Streak Master',
+        description: '7-day streak of 5+ daily problems',
+        earnedDate: new Date()
+      });
+    }
+
+    if (streak >= 14 && !(await this.hasStudentEarnedBadge(studentId, 'marathon_runner'))) {
+      badgesToAward.push({
+        type: 'marathon_runner',
+        title: '🏃 Marathon Runner',
+        description: '14-day consecutive streak',
+        earnedDate: new Date()
+      });
+    }
+
+    // 2. Total problems badges
+    if (latestProgress.totalSolved >= 100 && !(await this.hasStudentEarnedBadge(studentId, 'century_coder'))) {
+      badgesToAward.push({
+        type: 'century_coder',
+        title: '💯 Century Coder',
+        description: '100+ total problems solved',
+        earnedDate: new Date()
+      });
+    }
+
+    if (latestProgress.totalSolved >= 200 && !(await this.hasStudentEarnedBadge(studentId, 'problem_hunter'))) {
+      badgesToAward.push({
+        type: 'problem_hunter',
+        title: '🎯 Problem Hunter',
+        description: '200+ total problems solved',
+        earnedDate: new Date()
+      });
+    }
+
+    // 3. Weekly performance badges
+    if (weeklyTotal >= 50 && !(await this.hasStudentEarnedBadge(studentId, 'speed_demon'))) {
+      badgesToAward.push({
+        type: 'speed_demon',
+        title: '⚡ Speed Demon',
+        description: '50+ problems solved this week',
+        earnedDate: new Date()
+      });
+    }
+
+    if (weeklyTotal >= 35 && !(await this.hasStudentEarnedBadge(studentId, 'weekly_topper'))) {
+      badgesToAward.push({
+        type: 'weekly_topper',
+        title: '🏆 Weekly Topper',
+        description: 'Top performer this week',
+        earnedDate: new Date()
+      });
+    }
+
+    // 4. Difficulty-specific badges
+    if (latestProgress.hardSolved >= 25 && !(await this.hasStudentEarnedBadge(studentId, 'hard_mode'))) {
+      badgesToAward.push({
+        type: 'hard_mode',
+        title: '🔥 Hard Mode',
+        description: '25+ hard problems solved',
+        earnedDate: new Date()
+      });
+    }
+
+    if (latestProgress.mediumSolved >= 100 && !(await this.hasStudentEarnedBadge(studentId, 'algorithm_ace'))) {
+      badgesToAward.push({
+        type: 'algorithm_ace',
+        title: '🧮 Algorithm Ace',
+        description: '100+ medium problems solved',
+        earnedDate: new Date()
+      });
+    }
+
+    // 5. Consistency and improvement badges
+    const monthlyProgress = recentProgress.reduce((sum, p) => sum + p.dailyIncrement, 0);
+    if (monthlyProgress >= 100 && !(await this.hasStudentEarnedBadge(studentId, 'consistency_champ'))) {
+      badgesToAward.push({
+        type: 'consistency_champ',
+        title: '🧱 Consistency Champ',
+        description: 'Completed 30-day challenge',
+        earnedDate: new Date()
+      });
+    }
+
+    // 6. Calculate improvement for rising star badge
+    const previousWeekProgress = recentProgress.slice(7, 14);
+    const previousWeekTotal = previousWeekProgress.reduce((sum, p) => sum + p.dailyIncrement, 0);
+    const improvementRatio = previousWeekTotal > 0 ? (weeklyTotal / previousWeekTotal) : 0;
+
+    if (improvementRatio >= 1.5 && weeklyTotal > 10 && !(await this.hasStudentEarnedBadge(studentId, 'rising_star'))) {
+      badgesToAward.push({
+        type: 'rising_star',
+        title: '⭐ Rising Star',
+        description: '50% improvement in one week',
+        earnedDate: new Date()
+      });
+    }
+
+    // Create badges in database
+    for (const badge of badgesToAward) {
+      await this.createBadge({
+        id: randomUUID(),
+        studentId,
+        badgeType: badge.type,
+        title: badge.title,
+        description: badge.description,
+        icon: 'fas fa-trophy',
+        earnedDate: badge.earnedDate
+      });
+    }
+  }
+
+  // Add method to update student profile photo
+  async updateStudentProfilePhoto(studentId: string, profilePhotoUrl: string): Promise<void> {
+    try {
+      await db.update(students)
+        .set({ profilePhoto: profilePhotoUrl })
+        .where(eq(students.id, studentId));
+    } catch (error) {
+      console.error('Failed to update student profile photo:', error);
+    }
   }
 
   private calculateStreakFromProgress(progress: DailyProgress[]): number {

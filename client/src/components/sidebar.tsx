@@ -11,18 +11,6 @@ const getNavigation = (userRole: "student" | "admin" | null) => {
       icon: Trophy,
       roles: ["student", "admin"],
     },
-    {
-      name: "Weekly Progress",
-      href: "/weekly-progress",
-      icon: TrendingUp,
-      roles: ["student", "admin"],
-    },
-    {
-      name: "Badges",
-      href: "/badges",
-      icon: Medal,
-      roles: ["student", "admin"],
-    },
   ];
 
   const adminNavigation = [
@@ -54,6 +42,18 @@ const getNavigation = (userRole: "student" | "admin" | null) => {
       name: "Batch 2028",
       href: "/batch/2028",
       icon: BookOpen,
+      roles: ["admin"],
+    },
+    {
+      name: "Weekly Progress",
+      href: "/weekly-progress",
+      icon: TrendingUp,
+      roles: ["admin"],
+    },
+    {
+      name: "Badges",
+      href: "/badges",
+      icon: Medal,
       roles: ["admin"],
     },
     {
