@@ -371,8 +371,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sync all students (Admin only)
   app.post("/api/sync/all", authenticateToken, requireRole("admin"), async (req, res) => {
     try {
+      console.log('Starting manual sync of all students with real-time data...');
       const result = await schedulerService.manualSync();
-      res.json(result);
+      
+      // After sync, award badges to all students
+      console.log('Awarding badges to all students after sync...');
+      const students = await storage.getAllStudents();
+      const badgeResults = await Promise.allSettled(
+        students.map(student => storage.awardBadges(student.id))
+      );
+      const successfulBadges = badgeResults.filter(r => r.status === 'fulfilled').length;
+      
+      res.json({ 
+        ...result, 
+        badgesAwarded: `${successfulBadges}/${students.length} students processed for badges`,
+        message: `Sync completed with real-time LeetCode data. Success: ${result.success}, Failed: ${result.failed}`
+      });
     } catch (error) {
       console.error('Error syncing all students:', error);
       res.status(500).json({ error: "Failed to sync all students" });

@@ -386,7 +386,7 @@ export class LeetCodeService {
         await storage.updateStudent(studentId, { profilePhoto: stats.profilePhoto });
       }
 
-      // Store or update real-time data
+      // Store or update real-time data with proper structure
       const existingRealTimeData = await storage.getLeetcodeRealTimeData(studentId);
       const realTimeDataToStore = {
         studentId,
@@ -394,7 +394,8 @@ export class LeetCodeService {
         currentStreak: stats.currentStreak,
         maxStreak: stats.maxStreak,
         totalActiveDays: stats.totalActiveDays,
-        yearlyActivity: stats.yearlyActivity,
+        yearlyActivity: JSON.stringify(stats.yearlyActivity),
+        profilePhoto: stats.profilePhoto || null
       };
 
       if (existingRealTimeData) {
@@ -402,6 +403,9 @@ export class LeetCodeService {
       } else {
         await storage.createLeetcodeRealTimeData(realTimeDataToStore);
       }
+
+      // Award badges after syncing data (ensures real-time data is available)
+      await storage.awardBadges(studentId);
 
       return true;
     } catch (error) {
