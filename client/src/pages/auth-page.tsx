@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +16,6 @@ export default function AuthPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    setLocation("/");
-    return null;
-  }
-
   const [loginForm, setLoginForm] = useState({
     username: "",
     password: "",
@@ -34,6 +28,18 @@ export default function AuthPage() {
     role: "student" as "student" | "admin",
     leetcodeUsername: "",
   });
+
+  // Redirect if already authenticated (using useEffect to avoid early return)
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
+
+  // Don't render anything while redirecting
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

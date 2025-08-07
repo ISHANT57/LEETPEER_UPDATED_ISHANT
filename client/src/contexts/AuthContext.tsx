@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data.user;
     },
     enabled: !!token,
+    retry: false, // Don't retry on auth failures
   });
 
   const loginMutation = useMutation({
