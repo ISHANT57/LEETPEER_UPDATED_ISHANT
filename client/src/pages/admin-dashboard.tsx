@@ -36,6 +36,26 @@ export default function AdminDashboard() {
     },
   });
 
+  const updateWeek5DataMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/update/week5-data'),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/admin'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/weekly-progress'] });
+      toast({
+        title: "Week 5 data updated",
+        description: `Successfully updated ${data.stats.updated} students with Week 5 progress data.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update failed",
+        description: "Failed to update Week 5 data. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleExportCSV = () => {
     window.open('/api/export/csv', '_blank');
   };
@@ -145,7 +165,14 @@ export default function AdminDashboard() {
                 <RefreshCw className={`mr-2 ${syncProfilePhotosMutation.isPending ? 'animate-spin' : ''}`} size={16} />
                 {syncProfilePhotosMutation.isPending ? 'Syncing Photos...' : 'Sync Photos'}
               </Button>
-
+              <Button 
+                onClick={() => updateWeek5DataMutation.mutate()}
+                disabled={updateWeek5DataMutation.isPending}
+                className="bg-green-600 hover:bg-green-700 text-white border-green-600"
+              >
+                <RefreshCw className={`mr-2 ${updateWeek5DataMutation.isPending ? 'animate-spin' : ''}`} size={16} />
+                {updateWeek5DataMutation.isPending ? 'Updating Week 5...' : 'Update Week 5 Data'}
+              </Button>
             </div>
           </div>
         </div>

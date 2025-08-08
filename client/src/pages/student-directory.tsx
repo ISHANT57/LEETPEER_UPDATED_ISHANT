@@ -207,20 +207,14 @@ export default function StudentDirectory() {
                     </div>
                   </div>
 
-                  {/* Weekly Progress & Last Submission */}
-                  <div className="space-y-2">
-                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">This Week</span>
-                        <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+{student.weeklyProgress || 0}</span>
-                      </div>
-                    </div>
-                    {student.lastSubmissionDate && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                  {/* Last Submission */}
+                  {student.lastSubmissionDate && (
+                    <div className="text-center py-2">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
                         Last active: {new Date(student.lastSubmissionDate).toLocaleDateString()}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </Link>

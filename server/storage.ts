@@ -67,7 +67,7 @@ export interface IStorage {
   getWeeklyProgressData(studentId: string): Promise<WeeklyProgressData | undefined>;
   getAllWeeklyProgressData(): Promise<WeeklyProgressData[]>;
   createWeeklyProgressData(data: InsertWeeklyProgressData): Promise<WeeklyProgressData>;
-  updateWeeklyProgressData(studentId: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined>;
+  updateWeeklyProgressData(username: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined>;
   deleteWeeklyProgressData(studentId: string): Promise<boolean>;
 
   // LeetCode Real-time Data
@@ -661,10 +661,17 @@ export class PostgreSQLStorage implements IStorage {
     return result[0];
   }
 
-  async updateWeeklyProgressData(studentId: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined> {
+  async updateWeeklyProgressData(username: string, updates: Partial<WeeklyProgressData>): Promise<WeeklyProgressData | undefined> {
+    // First find the student by username
+    const student = await this.getStudentByUsername(username);
+    if (!student) {
+      console.log(`Student not found: ${username}`);
+      return undefined;
+    }
+
     const result = await db.update(weeklyProgressData)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(weeklyProgressData.studentId, studentId))
+      .where(eq(weeklyProgressData.studentId, student.id))
       .returning();
     return result[0];
   }
