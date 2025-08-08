@@ -230,7 +230,9 @@ export class WeeklyProgressImportService {
             week1: progressData.week1Score,
             week2: progressData.week2Score,
             week3: progressData.week3Score,
-            week4: progressData.week4Score
+            week4: progressData.week4Score,
+            currentWeekScore: progressData.currentWeekScore || 0,
+            lastWeekToCurrentIncrement: progressData.lastWeekToCurrentIncrement || 0
           },
           progressIncrements: {
             week2Progress: progressData.week2Progress,
@@ -287,6 +289,80 @@ export class WeeklyProgressImportService {
         averageWeeklyGrowth: progressData.averageWeeklyGrowth
       }
     };
+  }
+
+  // Import weekly progress from CSV data array
+  async importFromCSVData(csvData: any[]) {
+    const stats = { imported: 0, updated: 0, skipped: 0 };
+    
+    for (const row of csvData) {
+      try {
+        // Extract data from CSV row
+        const name = row['Name'] || row['name'] || '';
+        const leetcodeUsername = row['LeetCode Username'] || row['leetcode_username'] || row['username'] || '';
+        const week1Score = this.parseScore(row['Week 1'] || row['week1'] || '0');
+        const week2Score = this.parseScore(row['Week 2'] || row['week2'] || '0');
+        const week3Score = this.parseScore(row['Week 3'] || row['week3'] || '0');
+        const week4Score = this.parseScore(row['Week 4'] || row['week4'] || '0');
+        const currentWeekScore = this.parseScore(row['Current Week'] || row['current_week'] || '0');
+        
+        if (!name || !leetcodeUsername) {
+          stats.skipped++;
+          continue;
+        }
+
+        // Find student by username
+        const student = await storage.getStudentByUsername(leetcodeUsername);
+        if (!student) {
+          console.log(`Student not found: ${leetcodeUsername}`);
+          stats.skipped++;
+          continue;
+        }
+
+        // Calculate progress increments
+        const week2Progress = week2Score - week1Score;
+        const week3Progress = week3Score - week2Score;
+        const week4Progress = week4Score - week3Score;
+        const lastWeekToCurrentIncrement = currentWeekScore - week4Score;
+        
+        // Calculate totals
+        const totalScore = week1Score + week2Score + week3Score + week4Score + currentWeekScore;
+        const averageWeeklyGrowth = Math.round(((week2Progress + week3Progress + week4Progress + lastWeekToCurrentIncrement) / 4) * 100) / 100;
+
+        const weeklyProgressData = {
+          studentId: student.id,
+          week1Score,
+          week2Score,
+          week3Score,
+          week4Score,
+          currentWeekScore,
+          lastWeekToCurrentIncrement,
+          week2Progress,
+          week3Progress,
+          week4Progress,
+          totalScore,
+          averageWeeklyGrowth
+        };
+
+        // Check if weekly progress data already exists for this student
+        const existingData = await storage.getWeeklyProgressData(student.id);
+        
+        if (existingData) {
+          // Update existing data
+          await storage.updateWeeklyProgressData(student.id, weeklyProgressData);
+          stats.updated++;
+        } else {
+          // Create new data
+          await storage.createWeeklyProgressData(weeklyProgressData);
+          stats.imported++;
+        }
+      } catch (error) {
+        console.error(`Error processing row for ${row['Name'] || 'unknown'}:`, error);
+        stats.skipped++;
+      }
+    }
+    
+    return { stats };
   }
 }
 

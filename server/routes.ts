@@ -537,6 +537,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import weekly progress from CSV data
+  app.post("/api/import/weekly-progress-csv", async (req, res) => {
+    try {
+      const { csvData } = req.body;
+      
+      if (!csvData || !Array.isArray(csvData)) {
+        return res.status(400).json({ error: "Invalid CSV data format" });
+      }
+      
+      const result = await weeklyProgressImportService.importFromCSVData(csvData);
+      
+      res.json({
+        success: true,
+        message: `Weekly progress import completed: ${result.stats.imported} imported, ${result.stats.updated} updated`,
+        stats: result.stats
+      });
+    } catch (error) {
+      console.error('Weekly progress CSV import error:', error);
+      res.status(500).json({ error: `Failed to import weekly progress CSV: ${error}` });
+    }
+  });
+
+  // Remove students with zero questions solved
+  app.post("/api/cleanup/remove-zero-students", async (req, res) => {
+    try {
+      const result = await storage.removeStudentsWithZeroQuestions();
+      
+      res.json({
+        success: true,
+        message: `Removed ${result.removedCount} students with zero questions solved`,
+        removedCount: result.removedCount
+      });
+    } catch (error) {
+      console.error('Remove zero students error:', error);
+      res.status(500).json({ error: "Failed to remove students with zero questions" });
+    }
+  });
+
   // Get analytics data with historical and real-time data
   app.get("/api/analytics", async (req, res) => {
     try {
@@ -663,6 +701,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error exporting data:', error);
       res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // Remove students with zero questions solved (Admin only)
+  app.post("/api/cleanup/remove-zero-students", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const result = await storage.removeStudentsWithZeroQuestions();
+      res.json({
+        message: `Successfully removed ${result.removedCount} students with zero questions solved`,
+        removedStudents: result.removedStudents
+      });
+    } catch (error) {
+      console.error('Error removing students with zero questions:', error);
+      res.status(500).json({ error: "Failed to remove students" });
+    }
+  });
+
+  // Get students with zero questions solved (Admin only)
+  app.get("/api/cleanup/zero-students", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const students = await storage.getStudentsWithZeroQuestions();
+      res.json(students);
+    } catch (error) {
+      console.error('Error getting students with zero questions:', error);
+      res.status(500).json({ error: "Failed to get students with zero questions" });
+    }
+  });
+
+  // Import weekly progress from CSV data (Admin only)
+  app.post("/api/import/weekly-progress-csv", authenticateToken, requireRole("admin"), async (req, res) => {
+    try {
+      const { csvData } = req.body;
+      
+      if (!csvData || !Array.isArray(csvData)) {
+        return res.status(400).json({ error: "Invalid CSV data format" });
+      }
+
+      const result = await storage.importWeeklyProgressFromCSVData(csvData);
+      res.json({
+        message: `Successfully processed CSV data: ${result.imported} imported, ${result.updated} updated`,
+        stats: result
+      });
+    } catch (error) {
+      console.error('Error importing weekly progress CSV:', error);
+      res.status(500).json({ error: "Failed to import CSV data" });
     }
   });
 

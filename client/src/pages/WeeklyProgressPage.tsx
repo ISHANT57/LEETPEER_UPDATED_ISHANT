@@ -1,11 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, TrendingUp, TrendingDown, Calendar, Users, RefreshCw, Target, ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Search, TrendingUp, TrendingDown, Calendar, Users, RefreshCw, Target, ExternalLink, Upload, Download, AlertTriangle } from "lucide-react";
+import { useState, useRef } from "react";
 import { Link } from "wouter";
 
 interface WeeklyProgressData {
@@ -19,6 +21,8 @@ interface WeeklyProgressData {
     week2: number;
     week3: number;
     week4: number;
+    currentWeekScore: number;
+    lastWeekToCurrentIncrement: number; // New increment column
   };
   progressIncrements: {
     week2Progress: number;
@@ -38,10 +42,119 @@ interface WeeklyProgressData {
 
 export default function WeeklyProgressPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: weeklyData, isLoading, error, refetch } = useQuery<WeeklyProgressData[]>({
     queryKey: ['/api/weekly-progress'],
   });
+
+  // Remove students with zero questions mutation
+  const removeZeroStudentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/cleanup/remove-zero-students", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) throw new Error("Failed to remove students");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Students Removed",
+        description: `Successfully removed ${data.removedCount} students with zero questions solved`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/weekly-progress'] });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove students with zero questions",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Import CSV data mutation
+  const importCSVMutation = useMutation({
+    mutationFn: async (csvData: any[]) => {
+      const response = await fetch("/api/import/weekly-progress-csv", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ csvData }),
+      });
+      if (!response.ok) throw new Error("Failed to import CSV");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "CSV Import Successful",
+        description: `${data.stats.imported} imported, ${data.stats.updated} updated`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/weekly-progress'] });
+      refetch();
+      setIsImporting(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "CSV Import Failed",
+        description: "Failed to import CSV data",
+        variant: "destructive",
+      });
+      setIsImporting(false);
+    },
+  });
+
+  // Handle CSV file upload
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target?.result as string;
+        const lines = csv.split('\n').filter(line => line.trim());
+        const headers = lines[0].split(',').map(h => h.trim());
+        
+        // Expected CSV format: name, leetcodeUsername, currentWeekScore
+        const csvData = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim());
+          return {
+            name: values[0] || '',
+            leetcodeUsername: values[1] || '',
+            currentWeekScore: parseInt(values[2]) || 0
+          };
+        }).filter(row => row.name && row.leetcodeUsername);
+
+        if (csvData.length === 0) {
+          toast({
+            title: "Invalid CSV",
+            description: "No valid data found in CSV file",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        setIsImporting(true);
+        importCSVMutation.mutate(csvData);
+      } catch (error) {
+        toast({
+          title: "CSV Parse Error",
+          description: "Failed to parse CSV file",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const filteredData = weeklyData?.filter(progress =>
     progress.student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,6 +249,26 @@ export default function WeeklyProgressPage() {
             </div>
             
             <div className="flex gap-3 animate-slide-in-right">
+              {/* CSV Import Button */}
+              <Button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting || importCSVMutation.isPending}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white border-0"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {isImporting ? "Importing..." : "Import CSV"}
+              </Button>
+              
+              {/* Remove Zero Students Button */}
+              <Button 
+                onClick={() => removeZeroStudentsMutation.mutate()}
+                disabled={removeZeroStudentsMutation.isPending}
+                className="bg-red-500 hover:bg-red-600 text-white border-0"
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Remove Zero Students
+              </Button>
+              
               <Button 
                 onClick={() => refetch()}
                 className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
@@ -144,6 +277,15 @@ export default function WeeklyProgressPage() {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh Data
               </Button>
+              
+              {/* Hidden file input for CSV upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCSVUpload}
+                style={{ display: 'none' }}
+              />
             </div>
           </div>
         </div>
@@ -193,6 +335,54 @@ export default function WeeklyProgressPage() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Weekly Increment Leaderboard */}
+        {weeklyData && (
+          <Card className="modern-card bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+                <TrendingUp className="h-5 w-5 text-emerald-500" />
+                Weekly Increment Leaderboard
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {weeklyData
+                  .sort((a, b) => (b.weeklyData.lastWeekToCurrentIncrement || 0) - (a.weeklyData.lastWeekToCurrentIncrement || 0))
+                  .slice(0, 10)
+                  .map((progress, index) => (
+                    <div key={progress.student.leetcodeUsername} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          index === 0 ? 'bg-yellow-500 text-white' :
+                          index === 1 ? 'bg-gray-400 text-white' :
+                          index === 2 ? 'bg-orange-600 text-white' :
+                          'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-300'
+                        }`}>
+                          #{index + 1}
+                        </div>
+                        <Avatar className="w-8 h-8">
+                          <AvatarFallback className="bg-gradient-primary text-white font-semibold text-xs">
+                            {progress.student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium text-sm text-slate-900 dark:text-white">{progress.student.name}</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">@{progress.student.leetcodeUsername}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                          +{progress.weeklyData.lastWeekToCurrentIncrement || 0}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">This Week</div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Weekly Progress List */}
@@ -247,7 +437,7 @@ export default function WeeklyProgressPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="grid grid-cols-3 gap-2 mb-3">
                       <div className="text-center p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
                         <div className={`text-sm font-bold ${
                           progress.summary.averageWeeklyGrowth > 0 ? 'text-emerald-600 dark:text-emerald-400' :
@@ -258,13 +448,19 @@ export default function WeeklyProgressPage() {
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">Avg Growth</div>
                       </div>
+                      <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                        <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                          +{progress.weeklyData.lastWeekToCurrentIncrement || 0}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Weekly +</div>
+                      </div>
                       <div className="text-center p-2 bg-slate-50 dark:bg-slate-700 rounded-lg">
                         <div className="text-sm font-bold text-orange-600 dark:text-orange-400">{progress.realTimeData.newIncrement}</div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">New Progress</div>
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-4 gap-1 mb-3">
+                    <div className="grid grid-cols-5 gap-1 mb-3">
                       <div className="text-center p-1 bg-blue-50 dark:bg-blue-900/20 rounded">
                         <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">{progress.weeklyData.week1}</div>
                         <div className="text-xs text-blue-600 dark:text-blue-400">W1</div>
@@ -280,6 +476,10 @@ export default function WeeklyProgressPage() {
                       <div className="text-center p-1 bg-purple-50 dark:bg-purple-900/20 rounded">
                         <div className="text-xs font-semibold text-purple-700 dark:text-purple-300">{progress.weeklyData.week4}</div>
                         <div className="text-xs text-purple-600 dark:text-purple-400">W4</div>
+                      </div>
+                      <div className="text-center p-1 bg-indigo-50 dark:bg-indigo-900/20 rounded">
+                        <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{progress.weeklyData.currentWeekScore || 0}</div>
+                        <div className="text-xs text-indigo-600 dark:text-indigo-400">CUR</div>
                       </div>
                     </div>
                     

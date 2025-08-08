@@ -106,6 +106,17 @@ export interface IStorage {
   calculateTotalActiveDays(studentId: string): Promise<number>;
   getWeeklyTrend(studentId: string, weekStart: string): Promise<WeeklyTrend | undefined>;
   getLatestDailyProgress(studentId: string): Promise<DailyProgress | undefined>;
+  
+  // Cleanup methods
+  removeStudentsWithZeroQuestions(): Promise<{ removedCount: number; removedStudents: string[] }>;
+  getStudentsWithZeroQuestions(): Promise<Student[]>;
+  
+  // CSV Import methods  
+  importWeeklyProgressFromCSVData(csvData: Array<{
+    name: string;
+    leetcodeUsername: string;
+    currentWeekScore: number;
+  }>): Promise<{ imported: number; updated: number; errors: string[] }>;
 }
 
 export class PostgreSQLStorage implements IStorage {
@@ -905,8 +916,7 @@ export class PostgreSQLStorage implements IStorage {
         badgeType: badge.type,
         title: badge.title,
         description: badge.description,
-        icon: 'fas fa-trophy',
-        earnedAt: badge.earnedDate
+        icon: 'fas fa-trophy'
       });
     }
 
@@ -1285,6 +1295,106 @@ export class PostgreSQLStorage implements IStorage {
     if (totalSolved >= 50 && weeklyProgress >= 10) return 'Good';
     if (weeklyProgress >= 5) return 'Active';
     return 'Underperforming';
+  }
+
+  // New method to get students with zero questions solved
+  async getStudentsWithZeroQuestions(): Promise<Student[]> {
+    const allStudents = await this.getAllStudents();
+    const studentsWithZero: Student[] = [];
+
+    for (const student of allStudents) {
+      const latestProgress = await this.getLatestDailyProgress(student.id);
+      if (!latestProgress || latestProgress.totalSolved === 0) {
+        studentsWithZero.push(student);
+      }
+    }
+
+    return studentsWithZero;
+  }
+
+  // New method to remove students with zero questions solved
+  async removeStudentsWithZeroQuestions(): Promise<{ removedCount: number; removedStudents: string[] }> {
+    const studentsWithZero = await this.getStudentsWithZeroQuestions();
+    const removedStudents: string[] = [];
+
+    for (const student of studentsWithZero) {
+      const success = await this.deleteStudent(student.id);
+      if (success) {
+        removedStudents.push(student.name);
+      }
+    }
+
+    return {
+      removedCount: removedStudents.length,
+      removedStudents
+    };
+  }
+
+  // New CSV import method for weekly progress data
+  async importWeeklyProgressFromCSVData(csvData: Array<{
+    name: string;
+    leetcodeUsername: string;
+    currentWeekScore: number;
+  }>): Promise<{ imported: number; updated: number; errors: string[] }> {
+    const stats = { imported: 0, updated: 0, errors: [] };
+
+    for (const record of csvData) {
+      try {
+        // Find student by username or name
+        let student = await this.getStudentByUsername(record.leetcodeUsername);
+        
+        if (!student) {
+          // Try to find by name if username doesn't match
+          const allStudents = await this.getAllStudents();
+          student = allStudents.find(s => 
+            s.name.toLowerCase().trim() === record.name.toLowerCase().trim()
+          );
+        }
+
+        if (!student) {
+          stats.errors.push(`Student not found: ${record.name} (${record.leetcodeUsername})`);
+          continue;
+        }
+
+        // Get existing weekly progress data
+        const existingData = await this.getWeeklyProgressData(student.id);
+        
+        if (existingData) {
+          // Calculate the increment from last recorded week
+          const lastWeekScore = existingData.week4Score || 0;
+          const increment = record.currentWeekScore - lastWeekScore;
+
+          // Update existing record with new current week data
+          await this.updateWeeklyProgressData(student.id, {
+            currentWeekScore: record.currentWeekScore,
+            lastWeekToCurrentIncrement: increment,
+            updatedAt: new Date()
+          });
+          stats.updated++;
+        } else {
+          // Create new weekly progress data
+          await this.createWeeklyProgressData({
+            studentId: student.id,
+            currentWeekScore: record.currentWeekScore,
+            lastWeekToCurrentIncrement: record.currentWeekScore, // First time, so increment equals current score
+            week1Score: 0,
+            week2Score: 0,
+            week3Score: 0,
+            week4Score: 0,
+            week2Progress: 0,
+            week3Progress: 0,
+            week4Progress: 0,
+            totalScore: record.currentWeekScore,
+            averageWeeklyGrowth: 0
+          });
+          stats.imported++;
+        }
+      } catch (error) {
+        stats.errors.push(`Error processing ${record.name}: ${error}`);
+      }
+    }
+
+    return stats;
   }
 }
 
