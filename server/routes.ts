@@ -115,9 +115,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const realTimeData = await storage.getLeetcodeRealTimeData(student.id);
         const weeklyData = await storage.getWeeklyProgressData(student.id);
         const latestProgress = await storage.getLatestDailyProgress(student.id);
-        const currentStreak = await storage.calculateStreak(student.id);
-        const maxStreak = await storage.calculateMaxStreak(student.id);
-        const totalActiveDays = await storage.calculateTotalActiveDays(student.id);
+        
+        // Use real-time data if available, otherwise calculate from daily progress
+        const currentStreak = realTimeData?.currentStreak ?? await storage.calculateStreak(student.id);
+        const maxStreak = realTimeData?.maxStreak ?? await storage.calculateMaxStreak(student.id);
+        const totalActiveDays = realTimeData?.totalActiveDays ?? await storage.calculateTotalActiveDays(student.id);
+        
+
         
         // Get stats from latest daily progress instead of real-time data
         const stats = latestProgress ? {
@@ -146,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           streak: currentStreak,
           maxStreak: maxStreak,
           totalActiveDays: totalActiveDays,
-          weeklyProgress: weeklyData?.week4Score || 0,
+          weeklyProgress: Math.max(0, (weeklyData?.week5Score || weeklyData?.currentWeekScore || weeklyData?.week4Score || 0) - (weeklyData?.week4Score || 0)),
           lastSubmissionDate: latestProgress?.date,
           status: latestProgress ? 'Synced' : 'Pending'
         };
@@ -369,29 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync all students (Admin only)
-  app.post("/api/sync/all", authenticateToken, requireRole("admin"), async (req, res) => {
-    try {
-      console.log('Starting manual sync of all students with real-time data...');
-      const result = await schedulerService.manualSync();
-      
-      // After sync, award badges to all students
-      console.log('Awarding badges to all students after sync...');
-      const students = await storage.getAllStudents();
-      const badgeResults = await Promise.allSettled(
-        students.map(student => storage.awardBadges(student.id))
-      );
-      const successfulBadges = badgeResults.filter(r => r.status === 'fulfilled').length;
-      
-      res.json({ 
-        ...result, 
-        badgesAwarded: `${successfulBadges}/${students.length} students processed for badges`,
-        message: `Sync completed with real-time LeetCode data. Success: ${result.success}, Failed: ${result.failed}`
-      });
-    } catch (error) {
-      console.error('Error syncing all students:', error);
-      res.status(500).json({ error: "Failed to sync all students" });
-    }
-  });
+  // Manual sync endpoint removed - using automatic syncing now
 
   // Sync profile photos from LeetCode (Admin only)
   app.post("/api/sync/profile-photos", authenticateToken, requireRole("admin"), async (req, res) => {

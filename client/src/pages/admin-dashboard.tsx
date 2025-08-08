@@ -16,23 +16,7 @@ export default function AdminDashboard() {
     queryKey: ['/api/dashboard/admin'],
   });
 
-  const syncMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/sync/all'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/admin'] });
-      toast({
-        title: "Sync completed",
-        description: "All student data has been updated.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Sync failed",
-        description: "Failed to sync student data. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   const syncProfilePhotosMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/sync/profile-photos'),
@@ -161,15 +145,7 @@ export default function AdminDashboard() {
                 <RefreshCw className={`mr-2 ${syncProfilePhotosMutation.isPending ? 'animate-spin' : ''}`} size={16} />
                 {syncProfilePhotosMutation.isPending ? 'Syncing Photos...' : 'Sync Photos'}
               </Button>
-              <Button 
-                onClick={() => syncMutation.mutate()}
-                disabled={syncMutation.isPending}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30 backdrop-blur-sm"
-                variant="outline"
-              >
-                <RefreshCw className={`mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} size={16} />
-                {syncMutation.isPending ? 'Syncing...' : 'Sync All'}
-              </Button>
+
             </div>
           </div>
         </div>

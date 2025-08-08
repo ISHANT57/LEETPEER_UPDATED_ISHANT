@@ -161,12 +161,7 @@ export default function AuthPage() {
                     </Button>
                   </form>
 
-                  <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Demo Credentials:</h4>
-                    <p className="text-sm text-blue-800 dark:text-blue-200">
-                      Admin: <code className="bg-blue-200 dark:bg-blue-800 px-1 rounded">admin</code> / <code className="bg-blue-200 dark:bg-blue-800 px-1 rounded">leetpeer</code>
-                    </p>
-                  </div>
+
                 </CardContent>
               </Card>
             </TabsContent>
