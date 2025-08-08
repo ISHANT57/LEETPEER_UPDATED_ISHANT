@@ -21,6 +21,7 @@ interface WeeklyProgressData {
     week2: number;
     week3: number;
     week4: number;
+    week5: number;
     currentWeekScore: number;
     lastWeekToCurrentIncrement: number; // New increment column
   };
@@ -28,6 +29,7 @@ interface WeeklyProgressData {
     week2Progress: number;
     week3Progress: number;
     week4Progress: number;
+    week5Progress: number;
   };
   realTimeData: {
     currentSolved: number;
@@ -262,15 +264,7 @@ export default function WeeklyProgressPage() {
                 {isImporting ? "Importing..." : "Import CSV"}
               </Button>
               
-              {/* Remove Zero Students Button */}
-              <Button 
-                onClick={() => removeZeroStudentsMutation.mutate()}
-                disabled={removeZeroStudentsMutation.isPending}
-                className="bg-red-500 hover:bg-red-600 text-white border-0"
-              >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Remove Zero Students
-              </Button>
+
               
               <Button 
                 onClick={() => refetch()}
@@ -481,8 +475,8 @@ export default function WeeklyProgressPage() {
                         <div className="text-xs text-purple-600 dark:text-purple-400">W4</div>
                       </div>
                       <div className="text-center p-1 bg-indigo-50 dark:bg-indigo-900/20 rounded">
-                        <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{progress.weeklyData.currentWeekScore || 0}</div>
-                        <div className="text-xs text-indigo-600 dark:text-indigo-400">CUR</div>
+                        <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{progress.weeklyData.week5}</div>
+                        <div className="text-xs text-indigo-600 dark:text-indigo-400">W5</div>
                       </div>
                     </div>
                     

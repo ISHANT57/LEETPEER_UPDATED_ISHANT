@@ -76,11 +76,13 @@ export const weeklyProgressData = pgTable("weekly_progress_data", {
   week2Score: integer("week2_score").default(0),
   week3Score: integer("week3_score").default(0),
   week4Score: integer("week4_score").default(0),
+  week5Score: integer("week5_score").default(0),
   currentWeekScore: integer("current_week_score").default(0), // Latest week score from CSV
   lastWeekToCurrentIncrement: integer("last_week_to_current_increment").default(0), // New increment column
   week2Progress: integer("week2_progress").default(0), // W2 - W1
   week3Progress: integer("week3_progress").default(0), // W3 - W2
   week4Progress: integer("week4_progress").default(0), // W4 - W3
+  week5Progress: integer("week5_progress").default(0), // W5 - W4
   totalScore: integer("total_score").default(0),
   averageWeeklyGrowth: integer("average_weekly_growth").default(0),
   createdAt: timestamp("created_at").defaultNow(),

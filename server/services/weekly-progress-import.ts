@@ -88,13 +88,13 @@ export class WeeklyProgressImportService {
   }
 
   private async processStudentWeeklyProgress(record: string[], stats: WeeklyProgressStats): Promise<void> {
-    // CSV format: Name,LeetCode Username,LeetcodeProfileLink,WEEK1,WEEK2,WEEK3,WEEK4
-    if (record.length < 7) {
+    // CSV format: Name,LeetCode Username,LeetcodeProfileLink,WEEK1,WEEK2,WEEK3,WEEK4,WEEK5
+    if (record.length < 8) {
       stats.skipped++;
       return;
     }
 
-    const [name, leetcodeUsername, profileLink, week1Str, week2Str, week3Str, week4Str] = record;
+    const [name, leetcodeUsername, profileLink, week1Str, week2Str, week3Str, week4Str, week5Str] = record;
     
     if (!leetcodeUsername?.trim()) {
       stats.skipped++;
@@ -155,15 +155,17 @@ export class WeeklyProgressImportService {
     const week2Score = this.parseScore(week2Str);
     const week3Score = this.parseScore(week3Str);
     const week4Score = this.parseScore(week4Str);
+    const week5Score = this.parseScore(week5Str);
 
     // Calculate progress increments
     const week2Progress = week2Score - week1Score;
     const week3Progress = week3Score - week2Score;
     const week4Progress = week4Score - week3Score;
+    const week5Progress = week5Score - week4Score;
 
     // Calculate total score and average weekly growth
-    const totalScore = week1Score + week2Score + week3Score + week4Score;
-    const validWeeks = [week2Progress, week3Progress, week4Progress].filter(p => !isNaN(p));
+    const totalScore = week1Score + week2Score + week3Score + week4Score + week5Score;
+    const validWeeks = [week2Progress, week3Progress, week4Progress, week5Progress].filter(p => !isNaN(p));
     const averageWeeklyGrowth = validWeeks.length > 0 
       ? Math.round(validWeeks.reduce((sum, p) => sum + p, 0) / validWeeks.length)
       : 0;
@@ -174,9 +176,11 @@ export class WeeklyProgressImportService {
       week2Score,
       week3Score,
       week4Score,
+      week5Score,
       week2Progress,
       week3Progress,
       week4Progress,
+      week5Progress,
       totalScore,
       averageWeeklyGrowth
     };
@@ -218,8 +222,8 @@ export class WeeklyProgressImportService {
         const latestProgress = await storage.getLatestDailyProgress(student.id);
         const currentSolved = latestProgress?.totalSolved || 0;
         
-        // Calculate new increment (current - week4)
-        const newIncrement = currentSolved - (progressData.week4Score || 0);
+        // Calculate new increment (current - week5)
+        const newIncrement = currentSolved - (progressData.week5Score || progressData.week4Score || 0);
         
         return {
           student: {
@@ -232,13 +236,15 @@ export class WeeklyProgressImportService {
             week2: progressData.week2Score,
             week3: progressData.week3Score,
             week4: progressData.week4Score,
-            currentWeekScore: progressData.currentWeekScore || 0,
-            lastWeekToCurrentIncrement: progressData.lastWeekToCurrentIncrement || 0
+            week5: progressData.week5Score,
+            currentWeekScore: progressData.currentWeekScore || progressData.week5Score || 0,
+            lastWeekToCurrentIncrement: progressData.lastWeekToCurrentIncrement || progressData.week5Progress || 0
           },
           progressIncrements: {
             week2Progress: progressData.week2Progress,
             week3Progress: progressData.week3Progress,
-            week4Progress: progressData.week4Progress
+            week4Progress: progressData.week4Progress,
+            week5Progress: progressData.week5Progress
           },
           realTimeData: {
             currentSolved: currentSolved,
@@ -278,12 +284,14 @@ export class WeeklyProgressImportService {
         week1: progressData.week1Score,
         week2: progressData.week2Score,
         week3: progressData.week3Score,
-        week4: progressData.week4Score
+        week4: progressData.week4Score,
+        week5: progressData.week5Score
       },
       progressIncrements: {
         week2Progress: progressData.week2Progress,
         week3Progress: progressData.week3Progress,
-        week4Progress: progressData.week4Progress
+        week4Progress: progressData.week4Progress,
+        week5Progress: progressData.week5Progress
       },
       summary: {
         totalScore: progressData.totalScore,
@@ -305,7 +313,8 @@ export class WeeklyProgressImportService {
         const week2Score = this.parseScore(row['WEEK2'] || row['Week 2'] || row['week2'] || '0');
         const week3Score = this.parseScore(row['WEEK3'] || row['Week 3'] || row['week3'] || '0');
         const week4Score = this.parseScore(row['WEEK4'] || row['Week 4'] || row['week4'] || '0');
-        const currentWeekScore = this.parseScore(row['WEEK5'] || row['Current Week'] || row['current_week'] || '0');
+        const week5Score = this.parseScore(row['WEEK5'] || row['Week 5'] || row['week5'] || '0');
+        const currentWeekScore = week5Score;
         
         if (!name || !leetcodeUsername) {
           console.log(`Skipping row: missing name (${name}) or username (${leetcodeUsername})`);
@@ -325,11 +334,12 @@ export class WeeklyProgressImportService {
         const week2Progress = week2Score - week1Score;
         const week3Progress = week3Score - week2Score;
         const week4Progress = week4Score - week3Score;
-        const lastWeekToCurrentIncrement = currentWeekScore - week4Score;
+        const week5Progress = week5Score - week4Score;
+        const lastWeekToCurrentIncrement = week5Progress;
         
         // Calculate totals
-        const totalScore = week1Score + week2Score + week3Score + week4Score + currentWeekScore;
-        const averageWeeklyGrowth = Math.round(((week2Progress + week3Progress + week4Progress + lastWeekToCurrentIncrement) / 4) * 100) / 100;
+        const totalScore = week1Score + week2Score + week3Score + week4Score + week5Score;
+        const averageWeeklyGrowth = Math.round(((week2Progress + week3Progress + week4Progress + week5Progress) / 4) * 100) / 100;
 
         const weeklyProgressData = {
           studentId: student.id,
@@ -337,11 +347,13 @@ export class WeeklyProgressImportService {
           week2Score,
           week3Score,
           week4Score,
+          week5Score,
           currentWeekScore,
           lastWeekToCurrentIncrement,
           week2Progress,
           week3Progress,
           week4Progress,
+          week5Progress,
           totalScore,
           averageWeeklyGrowth
         };
