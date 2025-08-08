@@ -879,6 +879,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Recalculate all weekly increment data using present week - last week logic
+  app.post("/api/update/weekly-increments", async (req, res) => {
+    try {
+      // Update weekly progress calculations
+      const result = await db.execute(sql`
+        UPDATE weekly_progress_data 
+        SET 
+          week2_progress = COALESCE(week2_score - week1_score, 0),
+          week3_progress = COALESCE(week3_score - week2_score, 0),
+          week4_progress = COALESCE(week4_score - week3_score, 0),
+          week5_progress = COALESCE(week5_score - week4_score, 0),
+          average_weekly_growth = ROUND((week5_score - week1_score) / 4.0),
+          updated_at = NOW()
+        WHERE id IS NOT NULL
+      `);
+
+      res.json({
+        success: true,
+        message: "Weekly increment calculations updated successfully",
+        updatedCount: result.rowCount || 0
+      });
+    } catch (error) {
+      console.error('Weekly increments update error:', error);
+      res.status(500).json({ error: "Failed to update weekly increments" });
+    }
+  });
+
   // Get analytics data with historical and real-time data
   app.get("/api/analytics", async (req, res) => {
     try {
