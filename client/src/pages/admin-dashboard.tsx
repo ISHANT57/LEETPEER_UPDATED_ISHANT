@@ -56,6 +56,26 @@ export default function AdminDashboard() {
     },
   });
 
+  const updateWeek5RealtimeMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/update/week5-realtime'),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/admin'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/weekly-progress'] });
+      toast({
+        title: "Week 5 real-time update completed",
+        description: `Updated ${data.stats.updated} students with their current LeetCode progress for Week 5.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Real-time update failed",
+        description: "Failed to update Week 5 data with real-time values. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleExportCSV = () => {
     window.open('/api/export/csv', '_blank');
   };
@@ -172,6 +192,14 @@ export default function AdminDashboard() {
               >
                 <RefreshCw className={`mr-2 ${updateWeek5DataMutation.isPending ? 'animate-spin' : ''}`} size={16} />
                 {updateWeek5DataMutation.isPending ? 'Updating Week 5...' : 'Update Week 5 Data'}
+              </Button>
+              <Button 
+                onClick={() => updateWeek5RealtimeMutation.mutate()}
+                disabled={updateWeek5RealtimeMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+              >
+                <RefreshCw className={`mr-2 ${updateWeek5RealtimeMutation.isPending ? 'animate-spin' : ''}`} size={16} />
+                {updateWeek5RealtimeMutation.isPending ? 'Updating Real-time...' : 'Fix Week 5 Zeros'}
               </Button>
             </div>
           </div>

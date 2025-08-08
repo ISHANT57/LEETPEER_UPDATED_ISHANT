@@ -8,7 +8,9 @@ import { schedulerService } from "./services/scheduler";
 import { csvImportService } from "./services/csv-import";
 import { weeklyProgressImportService } from "./services/weekly-progress-import";
 import path from 'path';
-import { insertStudentSchema } from "@shared/schema";
+import { insertStudentSchema, students, weeklyProgressData, dailyProgress } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, sql } from "drizzle-orm";
 import studentsData from "../attached_assets/students_1753783623487.json";
 import batch2027Data from "../attached_assets/batch_2027_real_students.json";
 
@@ -784,6 +786,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Week 5 data update error:', error);
       res.status(500).json({ error: "Failed to update Week 5 data" });
+    }
+  });
+
+  // Update Week 5 scores for students with zero values using their real-time data
+  app.post("/api/update/week5-realtime", async (req, res) => {
+    try {
+      let updated = 0;
+      let skipped = 0;
+
+      // Get students with zero or null Week 5 scores who have current progress
+      const studentsNeedingUpdate = await db.select({
+        studentId: students.id,
+        name: students.name,
+        username: students.leetcodeUsername,
+        week5Score: weeklyProgressData.week5Score,
+        currentTotal: dailyProgress.totalSolved
+      })
+      .from(students)
+      .leftJoin(weeklyProgressData, eq(students.id, weeklyProgressData.studentId))
+      .leftJoin(dailyProgress, eq(students.id, dailyProgress.studentId))
+      .where(
+        and(
+          sql`(${weeklyProgressData.week5Score} = 0 OR ${weeklyProgressData.week5Score} IS NULL)`,
+          sql`${dailyProgress.totalSolved} > 0`
+        )
+      )
+      .orderBy(sql`${dailyProgress.date} DESC`);
+
+      // Get unique students with their latest daily progress
+      const uniqueStudents = new Map();
+      for (const student of studentsNeedingUpdate) {
+        if (!uniqueStudents.has(student.studentId) && student.currentTotal && student.currentTotal > 0) {
+          uniqueStudents.set(student.studentId, student);
+        }
+      }
+
+      console.log(`Found ${uniqueStudents.size} students needing Week 5 updates`);
+
+      for (const studentEntry of uniqueStudents.entries()) {
+        const [studentId, studentData] = studentEntry;
+        try {
+          const newWeek5Score = studentData.currentTotal;
+          
+          // Check if weekly progress data exists
+          const existingProgress = await storage.getWeeklyProgressData(studentId);
+          
+          if (existingProgress) {
+            // Update existing record with real-time data
+            await storage.updateWeeklyProgressData(studentData.username, {
+              week5Score: newWeek5Score,
+              currentWeekScore: newWeek5Score,
+              totalScore: newWeek5Score,
+              updatedAt: new Date()
+            });
+            console.log(`Updated ${studentData.name} Week 5 score to ${newWeek5Score}`);
+            updated++;
+          } else {
+            // Create new weekly progress record with real-time data
+            await storage.createWeeklyProgressData({
+              studentId: studentId,
+              week1Score: 0,
+              week2Score: 0,
+              week3Score: 0,
+              week4Score: 0,
+              week5Score: newWeek5Score,
+              currentWeekScore: newWeek5Score,
+              week2Progress: 0,
+              week3Progress: 0,
+              week4Progress: 0,
+              week5Progress: newWeek5Score,
+              totalScore: newWeek5Score,
+              averageWeeklyGrowth: Math.round(newWeek5Score / 5)
+            });
+            console.log(`Created Week 5 data for ${studentData.name} with score ${newWeek5Score}`);
+            updated++;
+          }
+        } catch (error) {
+          console.error(`Error updating ${studentData.name}:`, error);
+          skipped++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Week 5 real-time update completed: ${updated} students updated, ${skipped} skipped`,
+        stats: { updated, skipped, total: uniqueStudents.size }
+      });
+    } catch (error) {
+      console.error('Week 5 real-time update error:', error);
+      res.status(500).json({ error: "Failed to update Week 5 with real-time data" });
     }
   });
 
