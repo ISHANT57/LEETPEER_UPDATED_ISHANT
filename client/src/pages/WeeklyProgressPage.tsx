@@ -124,15 +124,18 @@ export default function WeeklyProgressPage() {
         const lines = csv.split('\n').filter(line => line.trim());
         const headers = lines[0].split(',').map(h => h.trim());
         
-        // Expected CSV format: name, leetcodeUsername, currentWeekScore
+        // Parse CSV with proper header mapping for the weekly progress format
         const csvData = lines.slice(1).map(line => {
           const values = line.split(',').map(v => v.trim());
-          return {
-            name: values[0] || '',
-            leetcodeUsername: values[1] || '',
-            currentWeekScore: parseInt(values[2]) || 0
-          };
-        }).filter(row => row.name && row.leetcodeUsername);
+          const rowData: any = {};
+          
+          // Map each value to its corresponding header
+          headers.forEach((header, index) => {
+            rowData[header] = values[index] || '';
+          });
+          
+          return rowData;
+        }).filter(row => row['Name'] && row['LeetCode Username']);
 
         if (csvData.length === 0) {
           toast({
