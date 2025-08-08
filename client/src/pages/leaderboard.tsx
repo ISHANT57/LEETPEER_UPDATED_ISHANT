@@ -303,12 +303,12 @@ export default function Leaderboard() {
 
           {/* Batch 2027 Leaderboard */}
           <TabsContent value="batch2027">
-            <BatchLeaderboard data={batchLeaderboard2027} batchNumber="2027" color="blue" />
+            <BatchLeaderboard data={batchLeaderboard2027 as any[]} batchNumber="2027" color="blue" />
           </TabsContent>
 
           {/* Batch 2028 Leaderboard */}
           <TabsContent value="batch2028">
-            <BatchLeaderboard data={batchLeaderboard2028} batchNumber="2028" color="purple" />
+            <BatchLeaderboard data={batchLeaderboard2028 as any[]} batchNumber="2028" color="purple" />
           </TabsContent>
 
           {/* University Leaderboard */}
@@ -363,7 +363,7 @@ export default function Leaderboard() {
                       
                       <div className="text-right">
                         <div className="px-4 py-2 rounded-full font-bold text-xl shadow-lg bg-gradient-to-r from-indigo-400 to-purple-500 text-white">
-                          {entry.totalSolved}
+                          {entry.weeklyScore}
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">total solved</p>
                       </div>

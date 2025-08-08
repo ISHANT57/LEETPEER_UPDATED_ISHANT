@@ -140,7 +140,8 @@ export class WeeklyProgressImportService {
         student = await storage.createStudent({
           name: name.trim(),
           leetcodeUsername: leetcodeUsername.trim(),
-          leetcodeProfileLink: profileLink.trim()
+          leetcodeProfileLink: profileLink.trim(),
+          batch: "2027" // Default batch for new students created via CSV import
         });
       } catch (error) {
         stats.errors.push(`Failed to create student ${name}: ${error}`);
@@ -297,16 +298,17 @@ export class WeeklyProgressImportService {
     
     for (const row of csvData) {
       try {
-        // Extract data from CSV row
+        // Extract data from CSV row with support for new CSV format
         const name = row['Name'] || row['name'] || '';
         const leetcodeUsername = row['LeetCode Username'] || row['leetcode_username'] || row['username'] || '';
-        const week1Score = this.parseScore(row['Week 1'] || row['week1'] || '0');
-        const week2Score = this.parseScore(row['Week 2'] || row['week2'] || '0');
-        const week3Score = this.parseScore(row['Week 3'] || row['week3'] || '0');
-        const week4Score = this.parseScore(row['Week 4'] || row['week4'] || '0');
-        const currentWeekScore = this.parseScore(row['Current Week'] || row['current_week'] || '0');
+        const week1Score = this.parseScore(row['WEEK1'] || row['Week 1'] || row['week1'] || '0');
+        const week2Score = this.parseScore(row['WEEK2'] || row['Week 2'] || row['week2'] || '0');
+        const week3Score = this.parseScore(row['WEEK3'] || row['Week 3'] || row['week3'] || '0');
+        const week4Score = this.parseScore(row['WEEK4'] || row['Week 4'] || row['week4'] || '0');
+        const currentWeekScore = this.parseScore(row['WEEK5'] || row['Current Week'] || row['current_week'] || '0');
         
         if (!name || !leetcodeUsername) {
+          console.log(`Skipping row: missing name (${name}) or username (${leetcodeUsername})`);
           stats.skipped++;
           continue;
         }
