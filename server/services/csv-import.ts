@@ -161,7 +161,8 @@ export class CSVImportService {
         student = await storage.createStudent({
           name: data.name,
           leetcodeUsername: data.leetcodeUsername,
-          leetcodeProfileLink: data.leetcodeProfileLink
+          leetcodeProfileLink: data.leetcodeProfileLink,
+          batch: "2028"
         });
       }
 
@@ -407,7 +408,8 @@ export class CSVImportService {
         student = await storage.createStudent({
           name: data.name,
           leetcodeUsername: data.leetcodeUsername,
-          leetcodeProfileLink: data.leetcodeProfileLink
+          leetcodeProfileLink: data.leetcodeProfileLink,
+          batch: "2028"
         });
         wasCreated = true;
       }

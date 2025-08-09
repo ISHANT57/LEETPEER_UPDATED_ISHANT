@@ -69,7 +69,8 @@ async function migrateFromPostgreSQL() {
         await storage.createStudent({
           name: student.name,
           leetcodeUsername: student.leetcode_username,
-          leetcodeProfileLink: student.leetcode_profile_link
+          leetcodeProfileLink: student.leetcode_profile_link,
+          batch: "2028"
         });
         console.log(`✓ Migrated student: ${student.name}`);
       } catch (error) {

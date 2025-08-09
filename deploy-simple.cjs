@@ -29,14 +29,9 @@ function copyDir(src, dest) {
 
 function main() {
   const distPublicPath = path.resolve(__dirname, 'dist', 'public');
-  const deploymentPaths = [
-    path.resolve(__dirname, 'server', 'public'),
-    path.resolve(__dirname, 'client', 'dist'),
-    path.resolve(__dirname, 'public'),
-    path.resolve(__dirname, 'build'),
-  ];
+  const primaryTarget = path.resolve(__dirname, 'server', 'public');
   
-  console.log('Setting up deployment files...');
+  console.log('Setting up deployment files for Render...');
   console.log('Working directory:', process.cwd());
   console.log('Script directory:', __dirname);
   
@@ -46,17 +41,28 @@ function main() {
     process.exit(1);
   }
   
-  console.log('Creating build files in all expected locations:');
+  console.log('Copying frontend assets to server/public...');
+  copyDir(distPublicPath, primaryTarget);
   
-  for (const targetPath of deploymentPaths) {
-    console.log(`Copying files to: ${targetPath}`);
-    copyDir(distPublicPath, targetPath);
-    
-    const hasIndex = fs.existsSync(path.join(targetPath, 'index.html'));
-    console.log(`${hasIndex ? 'SUCCESS' : 'FAILED'}: ${targetPath}`);
+  const hasIndex = fs.existsSync(path.join(primaryTarget, 'index.html'));
+  if (!hasIndex) {
+    console.error('CRITICAL: index.html not found in', primaryTarget);
+    process.exit(1);
   }
   
-  console.log('Deployment setup complete!');
+  console.log('SUCCESS: Frontend assets copied to server/public');
+  
+  // Verify critical files exist
+  const criticalFiles = ['index.html'];
+  for (const file of criticalFiles) {
+    const filePath = path.join(primaryTarget, file);
+    if (!fs.existsSync(filePath)) {
+      console.error(`CRITICAL: Missing ${file} in deployment`);
+      process.exit(1);
+    }
+  }
+  
+  console.log('✅ Deployment setup complete - Ready for Render!');
 }
 
 main();

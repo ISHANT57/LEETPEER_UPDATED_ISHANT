@@ -1287,7 +1287,12 @@ export class PostgreSQLStorage implements IStorage {
       maxStreakOverall: Math.max(batch2027Data.maxStreakOverall, batch2028Data.maxStreakOverall),
       avgMaxStreak: (batch2027Data.avgMaxStreak * batch2027Data.totalStudents + batch2028Data.avgMaxStreak * batch2028Data.totalStudents) / 
                     (batch2027Data.totalStudents + batch2028Data.totalStudents) || 0,
-      universityLeaderboard: universityLeaderboard.slice(0, 20) // Top 20 university-wide
+      universityLeaderboard: universityLeaderboard.slice(0, 20).map(item => ({
+        rank: item.rank,
+        student: item.student,
+        totalSolved: item.weeklyScore, // Using weeklyScore as totalSolved for compatibility
+        batch: item.batch
+      })) // Top 20 university-wide
     };
 
     return {
@@ -1343,7 +1348,7 @@ export class PostgreSQLStorage implements IStorage {
     leetcodeUsername: string;
     currentWeekScore: number;
   }>): Promise<{ imported: number; updated: number; errors: string[] }> {
-    const stats = { imported: 0, updated: 0, errors: [] };
+    const stats = { imported: 0, updated: 0, errors: [] as string[] };
 
     for (const record of csvData) {
       try {

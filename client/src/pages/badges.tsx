@@ -245,7 +245,7 @@ export default function BadgesPage() {
                         </div>
                         
                         <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Earned on {badge.earnedDate ? new Date(badge.earnedDate).toLocaleDateString() : 'Unknown date'}
+                          Earned on {badge.earnedAt ? new Date(badge.earnedAt).toLocaleDateString() : 'Unknown date'}
                         </div>
                       </CardContent>
                     </Card>

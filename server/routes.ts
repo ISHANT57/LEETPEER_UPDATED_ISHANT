@@ -824,7 +824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Found ${uniqueStudents.size} students needing Week 5 updates`);
 
-      for (const studentEntry of uniqueStudents.entries()) {
+      for (const studentEntry of Array.from(uniqueStudents.entries())) {
         const [studentId, studentData] = studentEntry;
         try {
           const newWeek5Score = studentData.currentTotal;
