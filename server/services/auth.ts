@@ -35,6 +35,11 @@ export class AuthService {
   }
 
   static async registerUser(data: RegisterData): Promise<{ user: any; token: string }> {
+    // Block admin registration - only single admin login is allowed
+    if (data.role === "admin") {
+      throw new Error("Admin registration is not allowed");
+    }
+
     // Check if username already exists
     const existingUser = await storage.getUserByUsername(data.username);
     if (existingUser) {
@@ -82,8 +87,8 @@ export class AuthService {
   }
 
   static async loginUser(data: LoginData): Promise<{ user: any; token: string }> {
-    // Special case for admin
-    if (data.username === "admin" && data.password === "leetpeer") {
+    // Special case for single admin login
+    if (data.username === "admin" && data.password === "leetpeer57") {
       const tokenPayload: JwtPayload = {
         userId: "admin-id",
         username: "admin",

@@ -23,8 +23,8 @@ interface RegisterData {
   username: string;
   password: string;
   confirmPassword: string;
-  role: "student" | "admin";
-  leetcodeUsername?: string;
+  role: "student";
+  leetcodeUsername: string;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);

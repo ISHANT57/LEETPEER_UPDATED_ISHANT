@@ -25,7 +25,7 @@ export default function AuthPage() {
     username: "",
     password: "",
     confirmPassword: "",
-    role: "student" as "student" | "admin",
+    role: "student" as "student",
     leetcodeUsername: "",
   });
 
@@ -77,10 +77,10 @@ export default function AuthPage() {
       return;
     }
 
-    if (registerForm.role === "student" && !registerForm.leetcodeUsername) {
+    if (!registerForm.leetcodeUsername) {
       toast({
         title: "Registration failed",
-        description: "LeetCode username is required for students",
+        description: "LeetCode username is required",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -187,31 +187,19 @@ export default function AuthPage() {
                         required
                       />
                     </div>
+                    {/* Role is now fixed as student - admin registration is disabled */}
+                    <input type="hidden" name="role" value="student" />
                     <div className="space-y-2">
-                      <Label htmlFor="register-role">Role</Label>
-                      <Select value={registerForm.role} onValueChange={(value: "student" | "admin") => setRegisterForm({ ...registerForm, role: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="student">Student</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="register-leetcode">LeetCode Username</Label>
+                      <Input
+                        id="register-leetcode"
+                        type="text"
+                        placeholder="Your LeetCode username"
+                        value={registerForm.leetcodeUsername}
+                        onChange={(e) => setRegisterForm({ ...registerForm, leetcodeUsername: e.target.value })}
+                        required
+                      />
                     </div>
-                    {registerForm.role === "student" && (
-                      <div className="space-y-2">
-                        <Label htmlFor="register-leetcode">LeetCode Username</Label>
-                        <Input
-                          id="register-leetcode"
-                          type="text"
-                          placeholder="Your LeetCode username"
-                          value={registerForm.leetcodeUsername}
-                          onChange={(e) => setRegisterForm({ ...registerForm, leetcodeUsername: e.target.value })}
-                          required
-                        />
-                      </div>
-                    )}
                     <div className="space-y-2">
                       <Label htmlFor="register-password">Password</Label>
                       <Input

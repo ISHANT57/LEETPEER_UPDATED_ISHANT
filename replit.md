@@ -33,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 - **Dashboards**: Student directory, individual student progress dashboards, real-time rankings, admin panel for management and sync control, leaderboards, and progress visualizations (charts, heatmaps).
 - **Data Flow**: LeetCode API data ingestion, automated daily syncing, real-time frontend updates, automatic badge awarding, and analytics processing.
 - **Key Features**: 100% student data coverage with real-time tracking, individual and batch-specific dashboards, comprehensive search, automated data sync, responsive design, end-to-end type safety, and robust error handling.
-- **Authentication**: Complete JWT authentication with bcrypt hashing, role-based access control (Student/Admin), secure API endpoints, and a modern authentication UI.
+- **Authentication**: Complete JWT authentication with bcrypt hashing, role-based access control (Student/Admin), secure API endpoints, and a modern authentication UI. Single admin login system with hardcoded credentials (admin/leetpeer57) - no admin registration allowed.
 - **Weekly Progress**: Enhanced weekly tracking with increment calculations and a weekly increment leaderboard system.
 - **CSV Import System**: Flexible CSV import for weekly progress, supporting various formats and intelligent student matching.
 - **Batch Separation**: Full support for distinct student batches with batch-specific APIs, dashboards, and leaderboards.
