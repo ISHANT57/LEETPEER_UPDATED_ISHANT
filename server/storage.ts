@@ -413,7 +413,9 @@ export class PostgreSQLStorage implements IStorage {
     const maxStreak = realTimeData?.maxStreak ?? await this.calculateMaxStreak(studentId);
     const totalActiveDays = realTimeData?.totalActiveDays ?? await this.calculateTotalActiveDays(studentId);
     const yearlyActivity = realTimeData?.yearlyActivity ? 
-      (realTimeData.yearlyActivity as Array<{ date: string; count: number }>) : 
+      (typeof realTimeData.yearlyActivity === 'string' 
+        ? JSON.parse(realTimeData.yearlyActivity) 
+        : realTimeData.yearlyActivity) as Array<{ date: string; count: number }> : 
       (await this.getStudentDailyProgress(studentId, 365)).map(p => ({
         date: p.date,
         count: p.dailyIncrement

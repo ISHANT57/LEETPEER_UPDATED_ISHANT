@@ -394,7 +394,7 @@ export class LeetCodeService {
         currentStreak: stats.currentStreak,
         maxStreak: stats.maxStreak,
         totalActiveDays: stats.totalActiveDays,
-        yearlyActivity: JSON.stringify(stats.yearlyActivity),
+        yearlyActivity: stats.yearlyActivity, // Store as JSON object, not stringified
         profilePhoto: stats.profilePhoto || null
       };
 
