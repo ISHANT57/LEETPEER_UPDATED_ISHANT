@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, RefreshCw, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import BatchStats from "@/components/admin/batch-stats";
@@ -255,11 +256,14 @@ export default function AdminDashboard() {
                     }`}>
                       {entry.rank}
                     </div>
-                    <img 
-                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=40&h=40"
-                      alt="Student" 
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-700 shadow-lg" 
-                    />
+                    <Avatar className="w-10 h-10 ring-2 ring-white dark:ring-slate-700 shadow-lg">
+                      {entry.student.profilePhoto && (
+                        <AvatarImage src={entry.student.profilePhoto} alt={entry.student.name} />
+                      )}
+                      <AvatarFallback className="bg-gradient-primary text-white font-bold text-sm">
+                        {entry.student.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <p className="font-semibold text-slate-900 dark:text-white">{entry.student.name}</p>
                       <p className="text-sm text-slate-500 dark:text-slate-400">@{entry.student.leetcodeUsername}</p>
