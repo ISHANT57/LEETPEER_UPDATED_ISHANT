@@ -14,14 +14,22 @@ interface ActivityHeatmapProps {
 export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const generateHeatmapData = () => {
     const today = new Date();
-    const oneYearAgo = new Date();
+    const oneYearAgo = new Date(today);
     oneYearAgo.setFullYear(today.getFullYear() - 1);
     
-    const days = [];
-    const currentDate = new Date(oneYearAgo);
+    // Start from the Sunday of the week containing one year ago
+    const startDate = new Date(oneYearAgo);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
     
-    // Generate all dates for the past year
-    while (currentDate <= today) {
+    // End at the Saturday of the week containing today
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+    
+    const days = [];
+    const currentDate = new Date(startDate);
+    
+    // Generate all dates in proper calendar weeks
+    while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split('T')[0];
       const activity = data.yearlyActivity.find(a => a.date === dateStr);
       const count = activity?.count || 0;
@@ -29,7 +37,8 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       days.push({
         date: dateStr,
         count,
-        level: count === 0 ? 0 : count < 2 ? 1 : count < 5 ? 2 : count < 8 ? 3 : 4
+        level: count === 0 ? 0 : count < 2 ? 1 : count < 5 ? 2 : count < 8 ? 3 : 4,
+        isInRange: currentDate >= oneYearAgo && currentDate <= today
       });
       
       currentDate.setDate(currentDate.getDate() + 1);
@@ -40,13 +49,13 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
 
   const heatmapData = generateHeatmapData();
   
-  // Group by weeks for proper display
-  const weeks: Array<Array<{ date: string; count: number; level: number }>> = [];
+  // Group by calendar weeks (Sunday to Saturday)
+  const weeks: Array<Array<{ date: string; count: number; level: number; isInRange?: boolean }>> = [];
   for (let i = 0; i < heatmapData.length; i += 7) {
     weeks.push(heatmapData.slice(i, i + 7));
   }
 
-  const getLevelColor = (level: number) => {
+  const getLevelColor = (level: number, isInRange: boolean = true) => {
     const colors = [
       'bg-slate-100 dark:bg-slate-800',    // 0 problems
       'bg-green-100 dark:bg-green-900',    // 1-2 problems
@@ -54,6 +63,12 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       'bg-green-500 dark:bg-green-500',    // 6-8 problems
       'bg-green-700 dark:bg-green-300'     // 9+ problems
     ];
+    
+    // Make squares outside the year range very subtle
+    if (!isInRange) {
+      return 'bg-slate-50 dark:bg-slate-900 opacity-30';
+    }
+    
     return colors[level];
   };
 
@@ -64,23 +79,29 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Calculate month positions
+  // Calculate month positions - show month when first Sunday of month appears
   const getMonthLabels = () => {
     const labels: Array<{ month: string; position: number }> = [];
     let currentMonth = -1;
     
     weeks.forEach((week, weekIndex) => {
-      const firstDay = week[0];
-      if (firstDay) {
-        const date = new Date(firstDay.date);
+      // Check if this week contains the first few days of a new month
+      const relevantDays = week.filter(day => day.isInRange);
+      if (relevantDays.length === 0) return;
+      
+      for (const day of week) {
+        const date = new Date(day.date);
         const month = date.getMonth();
+        const dayOfMonth = date.getDate();
         
-        if (month !== currentMonth && weekIndex % 4 === 0) {
+        // Show month label if it's a new month and we're in the first week of that month
+        if (month !== currentMonth && dayOfMonth <= 7) {
           labels.push({
             month: monthLabels[month],
             position: weekIndex
           });
           currentMonth = month;
+          break;
         }
       }
     });
@@ -154,7 +175,7 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
                       <Tooltip key={day.date}>
                         <TooltipTrigger asChild>
                           <div
-                            className={`w-3 h-3 rounded-sm ${getLevelColor(day.level)} 
+                            className={`w-3 h-3 rounded-sm ${getLevelColor(day.level, day.isInRange)} 
                               hover:ring-2 hover:ring-blue-400 transition-all cursor-pointer`}
                           />
                         </TooltipTrigger>
