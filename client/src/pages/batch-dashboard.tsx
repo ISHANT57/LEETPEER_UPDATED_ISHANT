@@ -292,7 +292,7 @@ export default function BatchDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.slice(0, 20).map((student, index) => (
+                  {filteredStudents.map((student, index) => (
                     <TableRow key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200 animate-fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
                       <TableCell className="py-4">
                         <div className="flex items-center space-x-4">
@@ -396,12 +396,12 @@ export default function BatchDashboard() {
               <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
                 <Trophy className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               </div>
-              Batch {batch} Top Performers
+              Batch {batch} Leaderboard
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {data.leaderboard.slice(0, 10).map((entry, index) => (
+              {data.leaderboard.map((entry, index) => (
                 <div key={entry.student.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl hover:shadow-lg transition-all duration-200 animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
                   <div className="flex items-center space-x-4">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg ${

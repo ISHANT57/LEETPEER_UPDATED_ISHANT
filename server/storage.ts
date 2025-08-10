@@ -1176,7 +1176,6 @@ export class PostgreSQLStorage implements IStorage {
 
     const leaderboard = studentsWithStats
       .sort((a, b) => b.stats.totalSolved - a.stats.totalSolved)
-      .slice(0, 10)
       .map((student, index) => ({
         rank: index + 1,
         student: {
